@@ -12,6 +12,7 @@ import com.scythebill.birdlist.android.cache.LocationEntity
 import com.scythebill.birdlist.android.cache.QueryResultRow
 import com.scythebill.birdlist.android.cache.buildLocationDisplayNames
 import com.scythebill.birdlist.android.cache.decodePhotoUris
+import com.scythebill.birdlist.android.data.QueryPreferencesStore
 import com.scythebill.birdlist.android.ui.common.formatDate
 import com.scythebill.birdlist.model.sighting.SightingInfo
 import com.scythebill.birdlist.model.taxa.Taxon
@@ -20,11 +21,13 @@ import com.scythebill.birdlist.model.taxa.Taxonomy
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -37,7 +40,9 @@ sealed interface QueryResultsUiState {
     data class Loaded(val groups: List<SpeciesGroup>) : QueryResultsUiState
 }
 
-data class SpeciesGroup(val taxon: Taxon?, val label: String, val rows: List<ResultRow>)
+data class SpeciesGroup(val taxon: Taxon?, val label: String, val rows: List<ResultRow>) {
+    val countable: Boolean get() = rows.any { it.countable }
+}
 
 data class ResultRow(
     val sightingId: Long,
@@ -46,15 +51,27 @@ data class ResultRow(
     val photographed: Boolean,
     val heardOnly: Boolean,
     val introduced: Boolean,
+    val countable: Boolean,
     val photoUrls: List<String>,
     val subspeciesLabel: String? = null,
+)
+
+private data class QueryInputs(
+    val location: LocationFieldState,
+    val date: DateFieldState,
+    val photographed: PhotographedFieldState,
+    val queryPreferences: QueryPreferences,
 )
 
 @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class QueryViewModel(
     private val dao: CacheDao,
     private val taxonomyDeferred: Deferred<Taxonomy>,
+    private val queryPreferencesStore: QueryPreferencesStore? = null,
 ) : ViewModel() {
+
+    private val queryPreferencesFlow: Flow<QueryPreferences> =
+        queryPreferencesStore?.preferencesFlow ?: flowOf(QueryPreferences.DEFAULT)
 
     private val locationField = MutableStateFlow(LocationFieldState())
     private val dateField = MutableStateFlow(DateFieldState())
@@ -89,12 +106,17 @@ class QueryViewModel(
     }
 
     val uiState: StateFlow<QueryResultsUiState> =
-        combine(locationField, dateField, photographedField) { location, date, photographed ->
-            Triple(location, date, photographed)
+        combine(
+            locationField,
+            dateField,
+            photographedField,
+            queryPreferencesFlow,
+        ) { location, date, photographed, queryPreferences ->
+            QueryInputs(location, date, photographed, queryPreferences)
         }
             .debounce(250)
-            .mapLatest { (location, date, photographed) ->
-                runQuery(location, date, photographed)
+            .mapLatest { inputs ->
+                runQuery(inputs.location, inputs.date, inputs.photographed, inputs.queryPreferences)
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), QueryResultsUiState.Loading)
 
@@ -107,6 +129,7 @@ class QueryViewModel(
         location: LocationFieldState,
         date: DateFieldState,
         photographed: PhotographedFieldState,
+        queryPreferences: QueryPreferences,
     ): QueryResultsUiState = withContext(Dispatchers.IO) {
         try {
             val taxonomy = taxonomyDeferred.await()
@@ -144,7 +167,12 @@ class QueryViewModel(
                                     dateLabel = formatDate(row.epochDay, row.datePrecision),
                                     photographed = row.photographed,
                                     heardOnly = row.heardOnly,
-                                    introduced = row.sightingStatus == SightingInfo.SightingStatus.INTRODUCED.id,
+                                    introduced = row.sightingStatus == SightingInfo.SightingStatus.INTRODUCED.name,
+                                    countable = queryPreferences.isCountable(
+                                        sightingStatus = row.sightingStatus,
+                                        heardOnly = row.heardOnly,
+                                        taxon = taxonomy.getTaxon(row.taxonId),
+                                    ),
                                     photoUrls = decodePhotoUris(row.photoUrisJson)
                                         .filter { it.startsWith("http://") || it.startsWith("https://") },
                                 )
@@ -187,10 +215,11 @@ class QueryViewModel(
     class Factory(
         private val dao: CacheDao,
         private val taxonomyDeferred: Deferred<Taxonomy>,
+        private val queryPreferencesStore: QueryPreferencesStore,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return QueryViewModel(dao, taxonomyDeferred) as T
+            return QueryViewModel(dao, taxonomyDeferred, queryPreferencesStore) as T
         }
     }
 }

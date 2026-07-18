@@ -34,8 +34,10 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.scythebill.birdlist.android.ScythebillApplication
 import com.scythebill.birdlist.android.cache.CacheDao
 import com.scythebill.birdlist.android.ui.common.SightingIndicators
 import com.scythebill.birdlist.android.ui.common.ExpandableSection
@@ -169,9 +171,14 @@ private enum class SpeciesDetailSection { INFO, GROUPS, SIGHTINGS }
 
 @Composable
 private fun SpeciesDetailContent(taxon: Taxon, dao: CacheDao, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     val viewModel: SpeciesDetailViewModel = viewModel(
         key = taxon.getId(),
-        factory = SpeciesDetailViewModel.Factory(taxon, dao),
+        factory = SpeciesDetailViewModel.Factory(
+            taxon,
+            dao,
+            (context.applicationContext as ScythebillApplication).container.queryPreferencesStore(context),
+        ),
     )
     var expandedSection: SpeciesDetailSection? by remember(taxon.getId()) {
         mutableStateOf(SpeciesDetailSection.INFO)

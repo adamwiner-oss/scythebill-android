@@ -4,6 +4,7 @@ import android.content.Context
 import com.scythebill.birdlist.android.cache.CacheDao
 import com.scythebill.birdlist.android.cache.ScythebillDatabase
 import com.scythebill.birdlist.android.data.PickedFilePreferences
+import com.scythebill.birdlist.android.data.QueryPreferencesStore
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.MoreExecutors
 import com.scythebill.birdlist.model.taxa.IocUpgradeLoader
@@ -79,6 +80,9 @@ class AppContainer {
 
     fun pickedFilePreferences(context: Context): PickedFilePreferences =
         PickedFilePreferences(context)
+
+    fun queryPreferencesStore(context: Context): QueryPreferencesStore =
+        QueryPreferencesStore(context)
 
     // TaxonomyMappings' constructor is written against the raw
     // `java.util.Set<T>` type (a Guice multibinding idiom), which Kotlin

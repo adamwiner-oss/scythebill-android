@@ -15,7 +15,7 @@ import androidx.room.RoomDatabase
         SightingTaxonEntity::class,
         CacheMetadataEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class ScythebillDatabase : RoomDatabase() {
@@ -31,7 +31,8 @@ abstract class ScythebillDatabase : RoomDatabase() {
                     context.applicationContext,
                     ScythebillDatabase::class.java,
                     "scythebill-cache.db",
-                ).build().also { instance = it }
+                ).fallbackToDestructiveMigration(dropAllTables = true)
+                    .build().also { instance = it }
             }
     }
 }

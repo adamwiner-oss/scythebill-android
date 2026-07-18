@@ -10,12 +10,15 @@ import androidx.sqlite.db.SimpleSQLiteQuery
 import com.scythebill.birdlist.android.cache.CacheDao
 import com.scythebill.birdlist.android.cache.buildLocationDisplayNames
 import com.scythebill.birdlist.android.cache.decodePhotoUris
+import com.scythebill.birdlist.android.data.QueryPreferencesStore
 import com.scythebill.birdlist.android.ui.common.formatDate
+import com.scythebill.birdlist.android.ui.query.QueryPreferences
 import com.scythebill.birdlist.android.ui.query.ResultRow
 import com.scythebill.birdlist.model.sighting.SightingInfo
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -66,6 +69,7 @@ private fun buildGroupsOrSubspecies(taxon: Taxon): List<GroupOrSubspeciesNode> {
 class SpeciesDetailViewModel(
     private val taxon: Taxon,
     private val dao: CacheDao,
+    private val queryPreferencesStore: QueryPreferencesStore? = null,
 ) : ViewModel() {
 
     var uiState: SpeciesDetailUiState by mutableStateOf(SpeciesDetailUiState.Loading)
@@ -79,6 +83,7 @@ class SpeciesDetailViewModel(
 
     private suspend fun load(): SpeciesDetailUiState = withContext(Dispatchers.IO) {
         try {
+            val queryPreferences = queryPreferencesStore?.preferencesFlow?.first() ?: QueryPreferences.DEFAULT
             val groupsOrSubspecies = buildGroupsOrSubspecies(taxon)
 
             val descendantTaxa = groupsOrSubspecies.flatMap { node ->
@@ -88,6 +93,7 @@ class SpeciesDetailViewModel(
                 }
             }
             val speciesId = taxon.getId()
+            val taxaById = (listOf(taxon) + descendantTaxa).associateBy { it.getId() }
             val subspeciesOrGroupLabels = descendantTaxa
                 .mapNotNull { it.getId() }
                 .associateWith { id -> descendantTaxa.first { it.getId() == id }.getName() }
@@ -118,7 +124,12 @@ class SpeciesDetailViewModel(
                             dateLabel = formatDate(row.epochDay, row.datePrecision),
                             photographed = row.photographed,
                             heardOnly = row.heardOnly,
-                            introduced = row.sightingStatus == SightingInfo.SightingStatus.INTRODUCED.id,
+                            introduced = row.sightingStatus == SightingInfo.SightingStatus.INTRODUCED.name,
+                            countable = queryPreferences.isCountable(
+                                sightingStatus = row.sightingStatus,
+                                heardOnly = row.heardOnly,
+                                taxon = taxaById[row.taxonId],
+                            ),
                             photoUrls = decodePhotoUris(row.photoUrisJson)
                                 .filter { it.startsWith("http://") || it.startsWith("https://") },
                             subspeciesLabel = if (row.taxonId != speciesId) {
@@ -139,10 +150,11 @@ class SpeciesDetailViewModel(
     class Factory(
         private val taxon: Taxon,
         private val dao: CacheDao,
+        private val queryPreferencesStore: QueryPreferencesStore,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return SpeciesDetailViewModel(taxon, dao) as T
+            return SpeciesDetailViewModel(taxon, dao, queryPreferencesStore) as T
         }
     }
 }

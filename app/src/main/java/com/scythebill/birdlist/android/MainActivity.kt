@@ -34,12 +34,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.scythebill.birdlist.android.cache.FileLoadViewModel
 import com.scythebill.birdlist.android.cache.LoadState
+import com.scythebill.birdlist.android.ui.query.QueryPreferencesDialog
 import com.scythebill.birdlist.android.ui.query.QueryScreen
 import com.scythebill.birdlist.android.ui.query.QueryViewModel
 import com.scythebill.birdlist.android.ui.search.SpeciesSearchBar
@@ -70,6 +72,7 @@ class MainActivity : ComponentActivity() {
         QueryViewModel.Factory(
             (application as ScythebillApplication).container.cacheDao(application),
             (application as ScythebillApplication).taxonomyDeferred,
+            (application as ScythebillApplication).container.queryPreferencesStore(application),
         )
     }
 
@@ -117,6 +120,16 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
+                            var reportPreferencesExpanded by remember { mutableStateOf(false) }
+                            if (reportPreferencesExpanded) {
+                                QueryPreferencesDialog(
+                                    store = (application as ScythebillApplication).container
+                                        .queryPreferencesStore(application),
+                                    scope = rememberCoroutineScope(),
+                                    onDismiss = { reportPreferencesExpanded = false },
+                                )
+                            }
+
                             if (loadState !is LoadState.Ready) {
                                 LoadFileBar(
                                     fileLoadViewModel = fileLoadViewModel,
@@ -125,6 +138,7 @@ class MainActivity : ComponentActivity() {
                             } else {
                                 AppTopBar(
                                     onPickFile = { openDocumentLauncher.launch(arrayOf("*/*")) },
+                                    onEditReportPreferences = { reportPreferencesExpanded = true },
                                     searchExpanded = searchExpanded,
                                     onSearchToggle = { searchExpanded = !searchExpanded },
                                     speciesSearchViewModel = speciesSearchViewModel,
@@ -250,6 +264,7 @@ private fun LoadFileBar(
 @Composable
 private fun AppTopBar(
     onPickFile: () -> Unit,
+    onEditReportPreferences: () -> Unit,
     searchExpanded: Boolean,
     onSearchToggle: () -> Unit,
     speciesSearchViewModel: SpeciesSearchViewModel,
@@ -267,6 +282,13 @@ private fun AppTopBar(
                     onClick = {
                         menuExpanded = false
                         onPickFile()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("Report preferences") },
+                    onClick = {
+                        menuExpanded = false
+                        onEditReportPreferences()
                     },
                 )
             }
