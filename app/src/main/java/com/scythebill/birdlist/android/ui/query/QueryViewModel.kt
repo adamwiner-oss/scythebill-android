@@ -10,6 +10,7 @@ import androidx.sqlite.db.SimpleSQLiteQuery
 import com.scythebill.birdlist.android.cache.CacheDao
 import com.scythebill.birdlist.android.cache.LocationEntity
 import com.scythebill.birdlist.android.cache.QueryResultRow
+import com.scythebill.birdlist.android.cache.buildLocationDisplayNames
 import com.scythebill.birdlist.android.ui.common.formatDate
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
@@ -57,12 +58,16 @@ class QueryViewModel(
     var locations: List<LocationEntity> by mutableStateOf(emptyList())
         private set
 
+    var locationDisplayNames: Map<String, String> by mutableStateOf(emptyMap())
+        private set
+
     private val locationsDeferred: Deferred<List<LocationEntity>> =
         viewModelScope.async(Dispatchers.IO) { dao.getAllLocations() }
 
     init {
         viewModelScope.launch {
             locations = locationsDeferred.await()
+            locationDisplayNames = buildLocationDisplayNames(locations)
         }
     }
 
@@ -113,7 +118,7 @@ class QueryViewModel(
             val rows = dao.queryResults(SimpleSQLiteQuery(sql, args.toTypedArray()))
 
             val taxonomy = taxonomyDeferred.await()
-            val locationNames = locationsDeferred.await().associate { it.id to it.displayName }
+            val locationNames = buildLocationDisplayNames(locationsDeferred.await())
 
             val groups = rows.groupBy { raisedSpeciesId(taxonomy, it.taxonId) }
                 .map { (taxonId, taxonRows) ->

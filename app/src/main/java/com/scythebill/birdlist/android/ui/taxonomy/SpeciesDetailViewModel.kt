@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.sqlite.db.SimpleSQLiteQuery
 import com.scythebill.birdlist.android.cache.CacheDao
+import com.scythebill.birdlist.android.cache.buildLocationDisplayNames
 import com.scythebill.birdlist.android.ui.common.formatDate
 import com.scythebill.birdlist.android.ui.query.ResultRow
 import com.scythebill.birdlist.model.taxa.Taxon
@@ -104,7 +105,7 @@ class SpeciesDetailViewModel(
                     ORDER BY s.epochDay DESC
                 """.trimIndent()
                 val rows = dao.queryResults(SimpleSQLiteQuery(sql, taxonIds.toTypedArray()))
-                val locationNames = dao.getAllLocations().associate { it.id to it.displayName }
+                val locationNames = buildLocationDisplayNames(dao.getAllLocations())
                 rows
                     .sortedByDescending { it.epochDay ?: Long.MIN_VALUE }
                     .map { row ->

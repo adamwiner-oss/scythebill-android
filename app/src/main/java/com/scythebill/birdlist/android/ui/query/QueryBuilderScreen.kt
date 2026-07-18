@@ -101,18 +101,23 @@ private fun LocationFieldRow(state: LocationFieldRowState) {
                     modifier = Modifier.fillMaxWidth(),
                 )
                 val matches = state.viewModel.locations
-                    .filter { it.displayName.contains(query, ignoreCase = true) }
+                    .filter {
+                        (state.viewModel.locationDisplayNames[it.id] ?: it.displayName)
+                            .contains(query, ignoreCase = true)
+                    }
                     .take(20)
                 DropdownMenu(
                     expanded = expanded && matches.isNotEmpty(),
                     onDismissRequest = { expanded = false },
                 ) {
                     matches.forEach { location ->
+                        val displayName = state.viewModel.locationDisplayNames[location.id]
+                            ?: location.displayName
                         DropdownMenuItem(
-                            text = { Text(location.displayName) },
+                            text = { Text(displayName) },
                             onClick = {
                                 selected = location
-                                query = location.displayName
+                                query = displayName
                                 expanded = false
                                 publish()
                             },
