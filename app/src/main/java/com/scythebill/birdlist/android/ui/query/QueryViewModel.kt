@@ -40,6 +40,7 @@ data class ResultRow(
     val locationName: String,
     val dateLabel: String,
     val photographed: Boolean,
+    val subspeciesLabel: String? = null,
 )
 
 @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)

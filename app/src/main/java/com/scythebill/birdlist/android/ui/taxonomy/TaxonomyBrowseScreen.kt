@@ -5,15 +5,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -36,6 +40,7 @@ import com.scythebill.birdlist.android.ui.common.ExpandableSection
 import com.scythebill.birdlist.android.ui.common.StaticSection
 import com.scythebill.birdlist.android.ui.search.SpeciesSearchBar
 import com.scythebill.birdlist.android.ui.search.SpeciesSearchViewModel
+import com.scythebill.birdlist.model.taxa.Species
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
 import com.scythebill.birdlist.model.taxa.Taxonomy
@@ -159,20 +164,29 @@ private fun SpeciesDetailContent(taxon: Taxon, dao: CacheDao, modifier: Modifier
         key = taxon.getId(),
         factory = SpeciesDetailViewModel.Factory(taxon, dao),
     )
-    var expandedSection by remember(taxon.getId()) { mutableStateOf(SpeciesDetailSection.INFO) }
+    var expandedSection: SpeciesDetailSection? by remember(taxon.getId()) {
+        mutableStateOf(SpeciesDetailSection.INFO)
+    }
+    fun toggle(section: SpeciesDetailSection) {
+        expandedSection = if (expandedSection == section) null else section
+    }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+    ) {
         ExpandableSection(
             title = "Species Info",
             expanded = expandedSection == SpeciesDetailSection.INFO,
-            onToggle = { expandedSection = SpeciesDetailSection.INFO },
+            onToggle = { toggle(SpeciesDetailSection.INFO) },
         ) {
             SpeciesInfoSection(taxon)
         }
 
         when (val state = viewModel.uiState) {
             is SpeciesDetailUiState.Loading -> Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator()
@@ -187,11 +201,21 @@ private fun SpeciesDetailContent(taxon: Taxon, dao: CacheDao, modifier: Modifier
                     ExpandableSection(
                         title = "Subspecies/Groups",
                         expanded = expandedSection == SpeciesDetailSection.GROUPS,
-                        onToggle = { expandedSection = SpeciesDetailSection.GROUPS },
+                        onToggle = { toggle(SpeciesDetailSection.GROUPS) },
                     ) {
                         Column {
-                            state.groupsOrSubspecies.forEach { child ->
-                                Text(speciesLabel(child))
+                            state.groupsOrSubspecies.forEach { node ->
+                                when (node) {
+                                    is GroupOrSubspeciesNode.Group -> {
+                                        TaxonWithRange(node.group)
+                                        Column(modifier = Modifier.padding(start = 24.dp)) {
+                                            node.subspecies.forEach { subspecies ->
+                                                TaxonWithRange(subspecies)
+                                            }
+                                        }
+                                    }
+                                    is GroupOrSubspeciesNode.Subspecies -> TaxonWithRange(node.taxon)
+                                }
                             }
                         }
                     }
@@ -201,21 +225,44 @@ private fun SpeciesDetailContent(taxon: Taxon, dao: CacheDao, modifier: Modifier
                     StaticSection(title = "Sightings", valueText = "Not recorded")
                 } else {
                     ExpandableSection(
-                        title = "Sightings",
+                        title = "Sightings (${state.sightings.size})",
                         expanded = expandedSection == SpeciesDetailSection.SIGHTINGS,
-                        onToggle = { expandedSection = SpeciesDetailSection.SIGHTINGS },
+                        onToggle = { toggle(SpeciesDetailSection.SIGHTINGS) },
                     ) {
                         Column {
                             state.sightings.forEach { row ->
                                 ListItem(
                                     headlineContent = { Text(row.locationName) },
-                                    supportingContent = { Text(row.dateLabel) },
+                                    supportingContent = {
+                                        Text(
+                                            if (row.subspeciesLabel != null) {
+                                                "${row.dateLabel} · ${row.subspeciesLabel}"
+                                            } else {
+                                                row.dateLabel
+                                            },
+                                        )
+                                    },
                                 )
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun TaxonWithRange(taxon: Taxon, modifier: Modifier = Modifier) {
+    val range = (taxon as? Species)?.let { TaxonUtils.getRange(it) }
+    Column(modifier = modifier.padding(vertical = 4.dp)) {
+        Text(speciesLabel(taxon))
+        if (range != null) {
+            Text(
+                range,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

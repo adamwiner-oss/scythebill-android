@@ -16,13 +16,43 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** A group with its nested subspecies, or a standalone subspecies with no group. */
+sealed interface GroupOrSubspeciesNode {
+    data class Group(val group: Taxon, val subspecies: List<Taxon>) : GroupOrSubspeciesNode
+    data class Subspecies(val taxon: Taxon) : GroupOrSubspeciesNode
+}
+
 sealed interface SpeciesDetailUiState {
     data object Loading : SpeciesDetailUiState
     data class Error(val message: String) : SpeciesDetailUiState
     data class Loaded(
-        val groupsOrSubspecies: List<Taxon>,
+        val groupsOrSubspecies: List<GroupOrSubspeciesNode>,
         val sightings: List<ResultRow>,
     ) : SpeciesDetailUiState
+}
+
+/**
+ * Walks the direct tree below [taxon], collecting groups (with their nested
+ * subspecies) and ungrouped subspecies in tree order.
+ */
+private fun buildGroupsOrSubspecies(taxon: Taxon): List<GroupOrSubspeciesNode> {
+    val result = mutableListOf<GroupOrSubspeciesNode>()
+
+    fun visit(current: Taxon) {
+        for (child in current.getContents()) {
+            when (child.getType()) {
+                Taxon.Type.group -> {
+                    val subspecies = TaxonUtils.getDescendantsOfType(child, Taxon.Type.subspecies)
+                    result.add(GroupOrSubspeciesNode.Group(child, subspecies))
+                }
+                Taxon.Type.subspecies -> result.add(GroupOrSubspeciesNode.Subspecies(child))
+                else -> visit(child)
+            }
+        }
+    }
+
+    visit(taxon)
+    return result
 }
 
 /**
@@ -46,11 +76,19 @@ class SpeciesDetailViewModel(
 
     private suspend fun load(): SpeciesDetailUiState = withContext(Dispatchers.IO) {
         try {
-            val groupsOrSubspecies =
-                TaxonUtils.getDescendantsOfType(taxon, Taxon.Type.group) +
-                    TaxonUtils.getDescendantsOfType(taxon, Taxon.Type.subspecies)
+            val groupsOrSubspecies = buildGroupsOrSubspecies(taxon)
 
-            val taxonIds = (listOfNotNull(taxon.getId()) + groupsOrSubspecies.mapNotNull { it.getId() })
+            val descendantTaxa = groupsOrSubspecies.flatMap { node ->
+                when (node) {
+                    is GroupOrSubspeciesNode.Group -> listOf(node.group) + node.subspecies
+                    is GroupOrSubspeciesNode.Subspecies -> listOf(node.taxon)
+                }
+            }
+            val speciesId = taxon.getId()
+            val subspeciesOrGroupLabels = descendantTaxa
+                .mapNotNull { it.getId() }
+                .associateWith { id -> TaxonUtils.getFullName(descendantTaxa.first { it.getId() == id }) }
+            val taxonIds = (listOfNotNull(speciesId) + descendantTaxa.mapNotNull { it.getId() })
                 .distinct()
 
             val sightings = if (taxonIds.isEmpty()) {
@@ -75,6 +113,11 @@ class SpeciesDetailViewModel(
                             locationName = locationNames[row.locationId] ?: row.locationId,
                             dateLabel = formatDate(row.epochDay, row.datePrecision),
                             photographed = row.photographed,
+                            subspeciesLabel = if (row.taxonId != speciesId) {
+                                subspeciesOrGroupLabels[row.taxonId]
+                            } else {
+                                null
+                            },
                         )
                     }
             }
