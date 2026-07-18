@@ -96,6 +96,7 @@ class SightingCacheBuilder(private val dao: CacheDao) {
                 heardOnly = info?.isHeardOnly ?: false,
                 approximateNumber = info?.number?.toString(),
                 firstForTaxon = p.sighting in firstForTaxon,
+                taxonomyId = p.sighting.taxonomy.getId(),
             )
         }
         val ids = dao.insertSightings(sightingEntities)
@@ -124,6 +125,7 @@ class SightingCacheBuilder(private val dao: CacheDao) {
                 sourceLastModified = sourceLastModified,
                 taxonomyVersion = taxonomyVersion,
                 builtAtEpochMillis = System.currentTimeMillis(),
+                cacheFormatVersion = CACHE_FORMAT_VERSION,
             )
         )
     }

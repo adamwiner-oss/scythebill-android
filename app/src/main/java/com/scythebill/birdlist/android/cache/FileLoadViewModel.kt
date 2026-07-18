@@ -81,7 +81,8 @@ class FileLoadViewModel(
         if (existingMetadata != null &&
             existingMetadata.sourceUri == uri.toString() &&
             existingMetadata.sourceSize == size &&
-            existingMetadata.sourceLastModified == lastModified
+            existingMetadata.sourceLastModified == lastModified &&
+            existingMetadata.cacheFormatVersion == CACHE_FORMAT_VERSION
         ) {
             _loadState.value = LoadState.Ready
             return

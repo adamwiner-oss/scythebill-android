@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "835f9530d2d73e872aa8846f7e58f6df",
+    "identityHash": "d2234959c85f907d1c2e9198ad213ec0",
     "entities": [
       {
         "tableName": "locations",
@@ -139,7 +139,7 @@
       },
       {
         "tableName": "sightings",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `locationId` TEXT NOT NULL, `epochDay` INTEGER, `datePrecision` TEXT, `tripId` TEXT, `sightingStatus` TEXT, `breedingCode` TEXT, `male` INTEGER NOT NULL, `female` INTEGER NOT NULL, `immature` INTEGER NOT NULL, `adult` INTEGER NOT NULL, `photographed` INTEGER NOT NULL, `heardOnly` INTEGER NOT NULL, `approximateNumber` TEXT, `firstForTaxon` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `locationId` TEXT NOT NULL, `epochDay` INTEGER, `datePrecision` TEXT, `tripId` TEXT, `sightingStatus` TEXT, `breedingCode` TEXT, `male` INTEGER NOT NULL, `female` INTEGER NOT NULL, `immature` INTEGER NOT NULL, `adult` INTEGER NOT NULL, `photographed` INTEGER NOT NULL, `heardOnly` INTEGER NOT NULL, `approximateNumber` TEXT, `firstForTaxon` INTEGER NOT NULL, `taxonomyId` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -223,6 +223,12 @@
             "fieldPath": "firstForTaxon",
             "columnName": "firstForTaxon",
             "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taxonomyId",
+            "columnName": "taxonomyId",
+            "affinity": "TEXT",
             "notNull": true
           }
         ],
@@ -337,7 +343,7 @@
       },
       {
         "tableName": "cache_metadata",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `sourceUri` TEXT NOT NULL, `sourceSize` INTEGER NOT NULL, `sourceLastModified` INTEGER NOT NULL, `taxonomyVersion` TEXT NOT NULL, `builtAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `sourceUri` TEXT NOT NULL, `sourceSize` INTEGER NOT NULL, `sourceLastModified` INTEGER NOT NULL, `taxonomyVersion` TEXT NOT NULL, `builtAtEpochMillis` INTEGER NOT NULL, `cacheFormatVersion` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -374,6 +380,12 @@
             "columnName": "builtAtEpochMillis",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "cacheFormatVersion",
+            "columnName": "cacheFormatVersion",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -386,7 +398,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '835f9530d2d73e872aa8846f7e58f6df')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd2234959c85f907d1c2e9198ad213ec0')"
     ]
   }
 }

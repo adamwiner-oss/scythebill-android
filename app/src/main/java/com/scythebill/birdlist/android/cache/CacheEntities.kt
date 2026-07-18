@@ -57,6 +57,8 @@ data class SightingEntity(
     val heardOnly: Boolean,
     val approximateNumber: String?,
     val firstForTaxon: Boolean,
+    /** Base taxonomy ID the sighting's taxon was resolved against (TaxonUtils.getBaseTaxonomy). */
+    val taxonomyId: String,
 )
 
 @Entity(tableName = "sighting_details")
@@ -81,7 +83,17 @@ data class CacheMetadataEntity(
     val sourceLastModified: Long,
     val taxonomyVersion: String,
     val builtAtEpochMillis: Long,
+    /** Bumped whenever the cache's row shape or population logic changes, to force a rebuild. */
+    val cacheFormatVersion: Int,
 )
+
+/**
+ * Bump whenever [SightingCacheBuilder]'s output changes in a way that requires
+ * discarding caches built by older app versions, even if the source file itself
+ * hasn't changed (e.g. a new column needs populating, or a bug in how existing
+ * columns were populated is fixed).
+ */
+const val CACHE_FORMAT_VERSION = 2
 
 /** Row shape produced by [CacheDao.queryResults]'s dynamically-built SQL. */
 data class QueryResultRow(

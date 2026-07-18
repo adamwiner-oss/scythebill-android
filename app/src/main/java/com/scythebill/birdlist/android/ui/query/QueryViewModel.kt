@@ -109,21 +109,23 @@ class QueryViewModel(
         photographed: PhotographedFieldState,
     ): QueryResultsUiState = withContext(Dispatchers.IO) {
         try {
+            val taxonomy = taxonomyDeferred.await()
+            val baseTaxonomyId = TaxonUtils.getBaseTaxonomy(taxonomy)!!.getId()
+
             val clauses = listOfNotNull(location.clause(), date.clause(), photographed.clause())
             val whereSql = if (clauses.isEmpty()) "1=1" else clauses.joinToString(" AND ") { it.first }
-            val args = clauses.flatMap { it.second }
+            val args = listOf<Any>(baseTaxonomyId) + clauses.flatMap { it.second }
             val sql = """
                 SELECT s.id AS sightingId, s.locationId, s.epochDay, s.datePrecision,
                        s.photographed, s.heardOnly, s.sightingStatus, sd.photoUrisJson, st.taxonId
                 FROM sightings s
                 JOIN sighting_taxa st ON st.sightingId = s.id
                 LEFT JOIN sighting_details sd ON sd.sightingId = s.id
-                WHERE $whereSql
+                WHERE s.taxonomyId = ? AND $whereSql
                 ORDER BY s.epochDay DESC
             """.trimIndent()
             val rows = dao.queryResults(SimpleSQLiteQuery(sql, args.toTypedArray()))
 
-            val taxonomy = taxonomyDeferred.await()
             val locationNames = buildLocationDisplayNames(locationsDeferred.await())
 
             val groups = rows.groupBy { raisedSpeciesId(taxonomy, it.taxonId) }
