@@ -11,7 +11,9 @@ import com.scythebill.birdlist.android.cache.CacheDao
 import com.scythebill.birdlist.android.cache.LocationEntity
 import com.scythebill.birdlist.android.cache.QueryResultRow
 import com.scythebill.birdlist.android.cache.buildLocationDisplayNames
+import com.scythebill.birdlist.android.cache.decodePhotoUris
 import com.scythebill.birdlist.android.ui.common.formatDate
+import com.scythebill.birdlist.model.sighting.SightingInfo
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
 import com.scythebill.birdlist.model.taxa.Taxonomy
@@ -42,6 +44,9 @@ data class ResultRow(
     val locationName: String,
     val dateLabel: String,
     val photographed: Boolean,
+    val heardOnly: Boolean,
+    val introduced: Boolean,
+    val photoUrls: List<String>,
     val subspeciesLabel: String? = null,
 )
 
@@ -109,9 +114,10 @@ class QueryViewModel(
             val args = clauses.flatMap { it.second }
             val sql = """
                 SELECT s.id AS sightingId, s.locationId, s.epochDay, s.datePrecision,
-                       s.photographed, st.taxonId
+                       s.photographed, s.heardOnly, s.sightingStatus, sd.photoUrisJson, st.taxonId
                 FROM sightings s
                 JOIN sighting_taxa st ON st.sightingId = s.id
+                LEFT JOIN sighting_details sd ON sd.sightingId = s.id
                 WHERE $whereSql
                 ORDER BY s.epochDay DESC
             """.trimIndent()
@@ -135,6 +141,10 @@ class QueryViewModel(
                                     locationName = locationNames[row.locationId] ?: row.locationId,
                                     dateLabel = formatDate(row.epochDay, row.datePrecision),
                                     photographed = row.photographed,
+                                    heardOnly = row.heardOnly,
+                                    introduced = row.sightingStatus == SightingInfo.SightingStatus.INTRODUCED.id,
+                                    photoUrls = decodePhotoUris(row.photoUrisJson)
+                                        .filter { it.startsWith("http://") || it.startsWith("https://") },
                                 )
                             },
                     )

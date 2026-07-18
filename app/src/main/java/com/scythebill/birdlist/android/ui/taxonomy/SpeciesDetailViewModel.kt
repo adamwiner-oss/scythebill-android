@@ -9,8 +9,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.sqlite.db.SimpleSQLiteQuery
 import com.scythebill.birdlist.android.cache.CacheDao
 import com.scythebill.birdlist.android.cache.buildLocationDisplayNames
+import com.scythebill.birdlist.android.cache.decodePhotoUris
 import com.scythebill.birdlist.android.ui.common.formatDate
 import com.scythebill.birdlist.android.ui.query.ResultRow
+import com.scythebill.birdlist.model.sighting.SightingInfo
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
 import kotlinx.coroutines.Dispatchers
@@ -98,9 +100,10 @@ class SpeciesDetailViewModel(
                 val placeholders = taxonIds.joinToString(",") { "?" }
                 val sql = """
                     SELECT s.id AS sightingId, s.locationId, s.epochDay, s.datePrecision,
-                           s.photographed, st.taxonId
+                           s.photographed, s.heardOnly, s.sightingStatus, sd.photoUrisJson, st.taxonId
                     FROM sightings s
                     JOIN sighting_taxa st ON st.sightingId = s.id
+                    LEFT JOIN sighting_details sd ON sd.sightingId = s.id
                     WHERE st.taxonId IN ($placeholders)
                     ORDER BY s.epochDay DESC
                 """.trimIndent()
@@ -114,6 +117,10 @@ class SpeciesDetailViewModel(
                             locationName = locationNames[row.locationId] ?: row.locationId,
                             dateLabel = formatDate(row.epochDay, row.datePrecision),
                             photographed = row.photographed,
+                            heardOnly = row.heardOnly,
+                            introduced = row.sightingStatus == SightingInfo.SightingStatus.INTRODUCED.id,
+                            photoUrls = decodePhotoUris(row.photoUrisJson)
+                                .filter { it.startsWith("http://") || it.startsWith("https://") },
                             subspeciesLabel = if (row.taxonId != speciesId) {
                                 subspeciesOrGroupLabels[row.taxonId]
                             } else {

@@ -7,10 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,6 +22,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.scythebill.birdlist.android.ui.common.SightingIndicators
 
 @Composable
 fun QueryResultsScreen(
@@ -117,8 +115,8 @@ private fun ResultRowItem(row: ResultRow) {
     ListItem(
         headlineContent = { Text(row.locationName) },
         supportingContent = { Text(row.dateLabel) },
-        trailingContent = if (row.photographed) {
-            { Icon(Icons.Filled.Star, contentDescription = "Photographed") }
+        trailingContent = if (row.heardOnly || row.introduced || row.photographed) {
+            { SightingIndicators(row) }
         } else null,
     )
 }

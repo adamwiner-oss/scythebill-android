@@ -90,5 +90,8 @@ data class QueryResultRow(
     val epochDay: Long?,
     val datePrecision: DatePrecision?,
     val photographed: Boolean,
+    val heardOnly: Boolean,
+    val sightingStatus: String?,
+    val photoUrisJson: String?,
     val taxonId: String,
 )

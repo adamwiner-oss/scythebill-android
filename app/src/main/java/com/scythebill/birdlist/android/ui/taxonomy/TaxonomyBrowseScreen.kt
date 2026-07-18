@@ -37,6 +37,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.scythebill.birdlist.android.cache.CacheDao
+import com.scythebill.birdlist.android.ui.common.SightingIndicators
 import com.scythebill.birdlist.android.ui.common.ExpandableSection
 import com.scythebill.birdlist.android.ui.common.StaticSection
 import com.scythebill.birdlist.model.taxa.Species
@@ -250,6 +251,9 @@ private fun SpeciesDetailContent(taxon: Taxon, dao: CacheDao, modifier: Modifier
                                             },
                                         )
                                     },
+                                    trailingContent = if (row.heardOnly || row.introduced || row.photographed) {
+                                        { SightingIndicators(row) }
+                                    } else null,
                                 )
                             }
                         }
