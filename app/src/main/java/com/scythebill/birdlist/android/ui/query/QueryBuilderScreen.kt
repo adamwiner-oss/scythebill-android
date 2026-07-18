@@ -156,11 +156,11 @@ private fun DateFieldRow(viewModel: QueryViewModel) {
             if (enabled) {
                 Box2 {
                     Button(onClick = { modeMenuExpanded = true }) {
-                        Text(mode.name)
+                        Text(mode.displayName)
                     }
                     DropdownMenu(expanded = modeMenuExpanded, onDismissRequest = { modeMenuExpanded = false }) {
                         DateFieldState.DateMode.entries.forEach { m ->
-                            DropdownMenuItem(text = { Text(m.name) }, onClick = {
+                            DropdownMenuItem(text = { Text(m.displayName) }, onClick = {
                                 mode = m
                                 modeMenuExpanded = false
                                 publish()

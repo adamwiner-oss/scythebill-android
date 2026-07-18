@@ -57,6 +57,9 @@ data class DateFieldState(
     }
 }
 
+val DateFieldState.DateMode.displayName: String
+    get() = name.replace('_', ' ')
+
 data class PhotographedFieldState(
     val enabled: Boolean = false,
     val hasPhoto: Boolean = true,
