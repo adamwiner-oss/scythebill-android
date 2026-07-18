@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report-set version="1.0.0" taxonomy="test">
+  <locations>
+    <country id="unst" name="United States">
+      <state id="wa" name="Washington"/>
+    </country>
+  </locations>
+  <sighting taxon="spRheapen" loc="wa" date="1998-09-19" adult="true"/>
+</report-set>

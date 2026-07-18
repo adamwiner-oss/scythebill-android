@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report-set version="19.0.0" taxonomy="test">
+  <locations>
+    <country id="unst" name="United States">
+      <state id="wa" name="Washington"/>
+      <location id="withtab" name="Foo&#x9;Bar"/>
+      <location id="notab" name="Foo Bar"/>
+    </country>
+  </locations>
+  <user id="aw" name="Adam Winer" abbrev="AW"/>
+  <trip id="t1" loc="wa" startDate="1998-09-19" startTime="07:30" endDate="1998-09-25" name="Trip to Nowhere">
+    <notes>Nothing happening here</notes>
+  </trip>
+  <sighting taxon="spRheapen" loc="wa" date="1998-09-19" adult="true"/>
+  <sighting sp="spRheaame,spRheapen" loc="wa" date="2000" breeding="NB"/>
+  <sighting sp="spRheaame,spRheapen" loc="wa" date="2001">saw:
+- one
+- two
+- three</sighting>
+  <sighting sp="spRheaame,spRheapen" loc="wa" date="2002">
+    <photo>file:/tmp/example1.jpg</photo>
+    <photo>file:/tmp/example2.jpg</photo>
+    <photo>file:/tmp/example3.jpg</photo>
+  </sighting>
+  <sighting sp="spRheaame,spRheapen" loc="wa" date="2003">notes:
+  - more notes
+  - lots more notes
+    <photo favorite="true">file:/tmp/example98.jpg</photo>
+    <photo name="99">file:/tmp/example99.jpg</photo>
+  </sighting>
+  <sighting hybrid="spRheaame,spRheapen" loc="wa" date="2000-11"/>
+  <visit-info loc="wa" date="1998-09-19" time="09:40" observationType="historical">
+    <area>2.805</area>
+    <distance>0.805</distance>
+    <duration>60</duration>
+    <partySize>3</partySize>
+    <complete/>
+    <photo name="Visit">file:/tmp/example3.jpg</photo>
+  </visit-info>
+</report-set>

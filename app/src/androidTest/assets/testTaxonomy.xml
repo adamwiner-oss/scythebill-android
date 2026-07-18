@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<taxonomy xmlns="http://www.adamwiner.com/checklist/1.0" id="test" name="Test List">
+  <class name="Aves" id="classAve">
+    <common-name>Birds</common-name>
+    <order name="Struthioniformes" id="ordStr">
+      <common-name>Struthioniformes</common-name>
+      <family name="Struthionidae" id="famStr">
+        <common-name>Ostrich</common-name>
+        <genus name="Struthio" id="geStrut">
+          <species name="camelus" id="spStrutcam">
+            <common-name>Ostrich</common-name>
+            <metadata>
+              <range>Africa, Middle East</range>
+            </metadata>
+            <group name="[camelus Group]" id="grStrutcam[ca">
+              <common-name>Ostrich (Common)</common-name>
+              <metadata/>
+              <subspecies name="camelus" id="sspStrutcam[cacam">
+                <metadata>
+                  <range>Sahel of North Africa and the Sudan</range>
+                </metadata>
+              </subspecies>
+              <subspecies name="syriacus" id="sspStrutcam[casyr">
+                <metadata>
+                  <status>EX</status>
+                  <range>Formerly Syrian and Arabian deserts. Extinct ca 1966</range>
+                </metadata>
+              </subspecies>
+              <subspecies name="massaicus" id="sspStrutcam[camas">
+                <metadata>
+                  <range>S Kenya and e Tanzania</range>
+                </metadata>
+              </subspecies>
+              <subspecies name="australis" id="sspStrutcam[caaus">
+                <metadata>
+                  <range>Southern Africa</range>
+                </metadata>
+              </subspecies>
+            </group>
+            <group name="molybdophanes" id="grStrutcammol">
+              <common-name>Ostrich (Somali)</common-name>
+              <metadata>
+                <range>S Ethiopia to Somalia and adjacent ne Kenya</range>
+              </metadata>
+            </group>
+          </species>
+        </genus>
+      </family>
+      <family name="Rheidae" id="famRhe">
+        <common-name>Rheas</common-name>
+        <genus name="Rhea" id="geRhea">
+          <species name="americana" id="spRheaame">
+            <common-name>Greater Rhea</common-name>
+            <metadata>
+              <status>NT</status>
+              <range>sc S. America</range>
+              <alternate-common-names>Common Rhea</alternate-common-names>
+            </metadata>
+            <subspecies name="americana" id="sspRheaameame">
+              <metadata>
+                <range>Campos of n and e Brazil</range>
+              </metadata>
+            </subspecies>
+            <subspecies name="intermedia" id="sspRheaameint">
+              <metadata>
+                <range>Extreme se Brazil (Rio Grande do Sul) and Uruguay</range>
+              </metadata>
+            </subspecies>
+            <subspecies name="nobilis" id="sspRheaamenob">
+              <metadata>
+                <range>E Paraguay (east of the R&#xed;o Paraguay)</range>
+              </metadata>
+            </subspecies>
+            <subspecies name="araneipes" id="sspRheaameara">
+              <metadata>
+                <range>Chaco of Paraguay to Bolivia and Brazilian Mato Grosso</range>
+              </metadata>
+            </subspecies>
+            <subspecies name="albescens" id="sspRheaamealb">
+              <metadata>
+                <range>Plains of Argentina south to R&#xed;o Negro</range>
+              </metadata>
+            </subspecies>
+          </species>
+           <species name="pennata" id="spRheapen">
+            <common-name>Lesser Rhea</common-name>
+            <metadata>
+              <status>NT</status>
+              <range>w&amp;s S.America</range>
+              <alternate-common-names>Darwin's Rhea</alternate-common-names>
+            </metadata>
+            <group name="tarapacensis/garleppi" id="grRheapentar">
+              <common-name>Lesser Rhea (Puna)</common-name>
+              <subspecies name="garleppi" id="sspRheapentargar">
+                <metadata>
+                  <range>Desert puna of se Peru, sw Bolivia and nw Argentina</range>
+                </metadata>
+              </subspecies>
+              <subspecies name="tarapacensis" id="sspRheapentartar">
+                <metadata>
+                  <range>Puna of n Chile (Arica to Atacama)</range>
+                </metadata>
+              </subspecies>
+            </group>
+            <group name="pennata" id="grRheapenpen">
+              <common-name>Lesser Rhea (Darwin's)</common-name>
+              <metadata>
+                <range>Patagonian steppes of s Argentina and Magellanic Chile</range>
+              </metadata>
+            </group>
+          </species>
+        </genus>
+      </family>
+    </order>
+  </class>
+</taxonomy>

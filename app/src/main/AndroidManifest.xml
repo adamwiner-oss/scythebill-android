@@ -1,0 +1,41 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:name=".ScythebillApplication"
+        android:label="Scythebill"
+        android:allowBackup="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- .bsxm by extension -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.bsxm" />
+            </intent-filter>
+
+            <!-- Generic-MIME fallback: .bsxm has no registered MIME type, so
+                 some senders attach it as application/octet-stream without a
+                 pathPattern the framework can match against. MainActivity
+                 re-validates the actual file name once it has the Uri,
+                 regardless of which filter matched. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

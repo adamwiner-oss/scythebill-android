@@ -1,0 +1,33 @@
+*.class
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local configuration file (sdk path, etc.)
+local.properties
+
+# Kotlin
+.kotlin/
+
+# Log/OS
+*.log
+.DS_Store
+
+# IntelliJ / Android Studio
+.idea/*
+!.idea/codeStyles/
+!.idea/runConfigurations/
+*.iml
+.navigation/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keystore files
+*.jks
+*.keystore
+
+# Google services
+google-services.json

@@ -1,0 +1,392 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "835f9530d2d73e872aa8846f7e58f6df",
+    "entities": [
+      {
+        "tableName": "locations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `displayName` TEXT NOT NULL, `type` TEXT, `parentId` TEXT, `latitude` REAL, `longitude` REAL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "displayName",
+            "columnName": "displayName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "parentId",
+            "columnName": "parentId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "latitude",
+            "columnName": "latitude",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "longitude",
+            "columnName": "longitude",
+            "affinity": "REAL"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "location_ancestors",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`locationId` TEXT NOT NULL, `ancestorId` TEXT NOT NULL, `depth` INTEGER NOT NULL, PRIMARY KEY(`locationId`, `ancestorId`))",
+        "fields": [
+          {
+            "fieldPath": "locationId",
+            "columnName": "locationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ancestorId",
+            "columnName": "ancestorId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "depth",
+            "columnName": "depth",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "locationId",
+            "ancestorId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_location_ancestors_ancestorId",
+            "unique": false,
+            "columnNames": [
+              "ancestorId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_location_ancestors_ancestorId` ON `${TABLE_NAME}` (`ancestorId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "trips",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `locationId` TEXT, `startEpochDay` INTEGER NOT NULL, `endEpochDay` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "locationId",
+            "columnName": "locationId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "startEpochDay",
+            "columnName": "startEpochDay",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endEpochDay",
+            "columnName": "endEpochDay",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "sightings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `locationId` TEXT NOT NULL, `epochDay` INTEGER, `datePrecision` TEXT, `tripId` TEXT, `sightingStatus` TEXT, `breedingCode` TEXT, `male` INTEGER NOT NULL, `female` INTEGER NOT NULL, `immature` INTEGER NOT NULL, `adult` INTEGER NOT NULL, `photographed` INTEGER NOT NULL, `heardOnly` INTEGER NOT NULL, `approximateNumber` TEXT, `firstForTaxon` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "locationId",
+            "columnName": "locationId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "epochDay",
+            "columnName": "epochDay",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "datePrecision",
+            "columnName": "datePrecision",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tripId",
+            "columnName": "tripId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sightingStatus",
+            "columnName": "sightingStatus",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "breedingCode",
+            "columnName": "breedingCode",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "male",
+            "columnName": "male",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "female",
+            "columnName": "female",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "immature",
+            "columnName": "immature",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "adult",
+            "columnName": "adult",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "photographed",
+            "columnName": "photographed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "heardOnly",
+            "columnName": "heardOnly",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "approximateNumber",
+            "columnName": "approximateNumber",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "firstForTaxon",
+            "columnName": "firstForTaxon",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sightings_locationId",
+            "unique": false,
+            "columnNames": [
+              "locationId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sightings_locationId` ON `${TABLE_NAME}` (`locationId`)"
+          },
+          {
+            "name": "index_sightings_epochDay",
+            "unique": false,
+            "columnNames": [
+              "epochDay"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sightings_epochDay` ON `${TABLE_NAME}` (`epochDay`)"
+          },
+          {
+            "name": "index_sightings_tripId",
+            "unique": false,
+            "columnNames": [
+              "tripId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sightings_tripId` ON `${TABLE_NAME}` (`tripId`)"
+          },
+          {
+            "name": "index_sightings_photographed",
+            "unique": false,
+            "columnNames": [
+              "photographed"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sightings_photographed` ON `${TABLE_NAME}` (`photographed`)"
+          }
+        ]
+      },
+      {
+        "tableName": "sighting_details",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sightingId` INTEGER NOT NULL, `description` TEXT, `photoUrisJson` TEXT, PRIMARY KEY(`sightingId`))",
+        "fields": [
+          {
+            "fieldPath": "sightingId",
+            "columnName": "sightingId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "photoUrisJson",
+            "columnName": "photoUrisJson",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "sightingId"
+          ]
+        }
+      },
+      {
+        "tableName": "sighting_taxa",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sightingId` INTEGER NOT NULL, `taxonId` TEXT NOT NULL, PRIMARY KEY(`sightingId`, `taxonId`))",
+        "fields": [
+          {
+            "fieldPath": "sightingId",
+            "columnName": "sightingId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taxonId",
+            "columnName": "taxonId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "sightingId",
+            "taxonId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sighting_taxa_taxonId",
+            "unique": false,
+            "columnNames": [
+              "taxonId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sighting_taxa_taxonId` ON `${TABLE_NAME}` (`taxonId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "cache_metadata",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `sourceUri` TEXT NOT NULL, `sourceSize` INTEGER NOT NULL, `sourceLastModified` INTEGER NOT NULL, `taxonomyVersion` TEXT NOT NULL, `builtAtEpochMillis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceUri",
+            "columnName": "sourceUri",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceSize",
+            "columnName": "sourceSize",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceLastModified",
+            "columnName": "sourceLastModified",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "taxonomyVersion",
+            "columnName": "taxonomyVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "builtAtEpochMillis",
+            "columnName": "builtAtEpochMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '835f9530d2d73e872aa8846f7e58f6df')"
+    ]
+  }
+}
