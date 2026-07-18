@@ -162,8 +162,8 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class MainTab(val label: String) {
-    TAXONOMY("Taxonomy"),
-    QUERY("Query"),
+    TAXONOMY("Species"),
+    QUERY("Reports"),
 }
 
 @Composable

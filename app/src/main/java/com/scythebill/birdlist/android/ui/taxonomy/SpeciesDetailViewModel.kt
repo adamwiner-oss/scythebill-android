@@ -87,7 +87,7 @@ class SpeciesDetailViewModel(
             val speciesId = taxon.getId()
             val subspeciesOrGroupLabels = descendantTaxa
                 .mapNotNull { it.getId() }
-                .associateWith { id -> TaxonUtils.getFullName(descendantTaxa.first { it.getId() == id }) }
+                .associateWith { id -> descendantTaxa.first { it.getId() == id }.getName() }
             val taxonIds = (listOfNotNull(speciesId) + descendantTaxa.mapNotNull { it.getId() })
                 .distinct()
 
