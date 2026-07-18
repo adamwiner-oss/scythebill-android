@@ -9,11 +9,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
@@ -33,9 +42,11 @@ import com.scythebill.birdlist.android.cache.FileLoadViewModel
 import com.scythebill.birdlist.android.cache.LoadState
 import com.scythebill.birdlist.android.ui.query.QueryScreen
 import com.scythebill.birdlist.android.ui.query.QueryViewModel
+import com.scythebill.birdlist.android.ui.search.SpeciesSearchBar
 import com.scythebill.birdlist.android.ui.search.SpeciesSearchViewModel
 import com.scythebill.birdlist.android.ui.taxonomy.TaxonomyBrowseScreen
 import com.scythebill.birdlist.android.ui.taxonomy.TaxonomyBrowseViewModel
+import com.scythebill.birdlist.model.taxa.Taxon
 import java.io.File
 
 class MainActivity : ComponentActivity() {
@@ -89,11 +100,44 @@ class MainActivity : ComponentActivity() {
                         StartupLoadingScreen()
                     } else {
                         Column(modifier = Modifier.safeDrawingPadding()) {
-                            LoadFileBar(
-                                fileLoadViewModel = fileLoadViewModel,
-                                onPickFile = { openDocumentLauncher.launch(arrayOf("*/*")) },
-                            )
+                            val loadState by fileLoadViewModel.loadState.collectAsState()
                             var tab by remember { mutableStateOf(MainTab.TAXONOMY) }
+                            var searchExpanded by remember { mutableStateOf(false) }
+                            var navigateToSpecies by remember { mutableStateOf<Taxon?>(null) }
+                            var scrollToTaxonId by remember { mutableStateOf<String?>(null) }
+
+                            val reportTaxonIds by queryViewModel.reportTaxonIds.collectAsState()
+                            LaunchedEffect(tab, reportTaxonIds) {
+                                speciesSearchViewModel.setAllowedPredicate(
+                                    if (tab == MainTab.QUERY) {
+                                        { taxon -> reportTaxonIds.contains(taxon.getId()) }
+                                    } else {
+                                        { true }
+                                    }
+                                )
+                            }
+
+                            if (loadState !is LoadState.Ready) {
+                                LoadFileBar(
+                                    fileLoadViewModel = fileLoadViewModel,
+                                    onPickFile = { openDocumentLauncher.launch(arrayOf("*/*")) },
+                                )
+                            } else {
+                                AppTopBar(
+                                    onPickFile = { openDocumentLauncher.launch(arrayOf("*/*")) },
+                                    searchExpanded = searchExpanded,
+                                    onSearchToggle = { searchExpanded = !searchExpanded },
+                                    speciesSearchViewModel = speciesSearchViewModel,
+                                    onSpeciesSelected = { taxon ->
+                                        if (tab == MainTab.QUERY) {
+                                            scrollToTaxonId = taxon.getId()
+                                        } else {
+                                            navigateToSpecies = taxon
+                                        }
+                                        searchExpanded = false
+                                    },
+                                )
+                            }
                             TabRow(selectedTabIndex = tab.ordinal) {
                                 MainTab.entries.forEach { t ->
                                     Tab(
@@ -106,10 +150,15 @@ class MainActivity : ComponentActivity() {
                             when (tab) {
                                 MainTab.TAXONOMY -> TaxonomyBrowseScreen(
                                     taxonomyViewModel,
-                                    speciesSearchViewModel,
                                     (application as ScythebillApplication).container.cacheDao(application),
+                                    navigateToSpecies = navigateToSpecies,
+                                    onNavigationHandled = { navigateToSpecies = null },
                                 )
-                                MainTab.QUERY -> QueryScreen(queryViewModel)
+                                MainTab.QUERY -> QueryScreen(
+                                    queryViewModel,
+                                    scrollToTaxonId = scrollToTaxonId,
+                                    onScrollHandled = { scrollToTaxonId = null },
+                                )
                             }
                         }
                     }
@@ -195,5 +244,48 @@ private fun LoadFileBar(
                 is LoadState.ParseError -> (state as LoadState.ParseError).message
             }
         )
+    }
+}
+
+@Composable
+private fun AppTopBar(
+    onPickFile: () -> Unit,
+    searchExpanded: Boolean,
+    onSearchToggle: () -> Unit,
+    speciesSearchViewModel: SpeciesSearchViewModel,
+    onSpeciesSelected: (Taxon) -> Unit,
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            var menuExpanded by remember { mutableStateOf(false) }
+            IconButton(onClick = { menuExpanded = true }) {
+                Icon(Icons.Filled.Menu, contentDescription = "Menu")
+            }
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text("Pick .bsxm file") },
+                    onClick = {
+                        menuExpanded = false
+                        onPickFile()
+                    },
+                )
+            }
+            IconButton(onClick = {
+                if (searchExpanded) speciesSearchViewModel.clear()
+                onSearchToggle()
+            }) {
+                if (searchExpanded) {
+                    Icon(Icons.Filled.Close, contentDescription = "Close search")
+                } else {
+                    Icon(Icons.Filled.Search, contentDescription = "Search species")
+                }
+            }
+        }
+        if (searchExpanded) {
+            SpeciesSearchBar(
+                viewModel = speciesSearchViewModel,
+                onSpeciesSelected = onSpeciesSelected,
+            )
+        }
     }
 }

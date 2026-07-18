@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -86,6 +87,11 @@ class QueryViewModel(
                 runQuery(location, date, photographed)
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), QueryResultsUiState.Loading)
+
+    /** Ids of species with a sighting in the current report results. */
+    val reportTaxonIds: StateFlow<Set<String>> = uiState
+        .map { (it as? QueryResultsUiState.Loaded)?.groups?.mapNotNull { g -> g.taxon?.getId() }?.toSet() ?: emptySet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     private suspend fun runQuery(
         location: LocationFieldState,

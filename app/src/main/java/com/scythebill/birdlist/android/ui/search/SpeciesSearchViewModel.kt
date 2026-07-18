@@ -10,8 +10,11 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.stream.Collectors
 
@@ -28,16 +31,27 @@ class SpeciesSearchViewModel(
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
 
-    private val _matches = MutableStateFlow<List<SpeciesMatch>>(emptyList())
-    val matches: StateFlow<List<SpeciesMatch>> = _matches.asStateFlow()
+    private val _rawMatches = MutableStateFlow<List<SpeciesMatch>>(emptyList())
+
+    private val _allowedPredicate = MutableStateFlow<(Taxon) -> Boolean>({ true })
+
+    val matches: StateFlow<List<SpeciesMatch>> =
+        combine(_rawMatches, _allowedPredicate) { all, predicate ->
+            all.filter { predicate(it.taxon) }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private var searchJob: Job? = null
+
+    /** Restricts [matches] to taxa satisfying [predicate]; `{ true }` allows all. */
+    fun setAllowedPredicate(predicate: (Taxon) -> Boolean) {
+        _allowedPredicate.value = predicate
+    }
 
     fun onQueryChanged(text: String) {
         _query.value = text
         searchJob?.cancel()
         if (text.isBlank()) {
-            _matches.value = emptyList()
+            _rawMatches.value = emptyList()
             return
         }
         searchJob = viewModelScope.launch {
@@ -54,7 +68,7 @@ class SpeciesSearchViewModel(
 
                 if (ids.size >= MAX_MATCHES) break
             }
-            _matches.value = ids.take(MAX_MATCHES).mapNotNull { id ->
+            _rawMatches.value = ids.take(MAX_MATCHES).mapNotNull { id ->
                 taxonomy.getTaxon(id)?.let { taxon -> SpeciesMatch(taxon, taxonSearchLabel(taxon)) }
             }
         }
@@ -63,7 +77,7 @@ class SpeciesSearchViewModel(
     fun clear() {
         searchJob?.cancel()
         _query.value = ""
-        _matches.value = emptyList()
+        _rawMatches.value = emptyList()
     }
 
     class Factory(

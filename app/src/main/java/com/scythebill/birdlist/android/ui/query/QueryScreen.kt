@@ -6,9 +6,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-fun QueryScreen(viewModel: QueryViewModel) {
+fun QueryScreen(
+    viewModel: QueryViewModel,
+    scrollToTaxonId: String? = null,
+    onScrollHandled: () -> Unit = {},
+) {
     Column(modifier = Modifier.fillMaxSize()) {
         QueryBuilderScreen(viewModel)
-        QueryResultsScreen(viewModel)
+        QueryResultsScreen(viewModel, scrollToTaxonId, onScrollHandled)
     }
 }

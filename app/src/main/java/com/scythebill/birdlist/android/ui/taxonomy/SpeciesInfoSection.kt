@@ -73,7 +73,7 @@ fun SpeciesInfoSection(taxon: Taxon, modifier: Modifier = Modifier) {
         val accountUrl = taxon.getAccountId()?.let { taxon.getTaxonomy()?.getTaxonAccountUrl(it) }
         if (accountUrl != null) {
             LinkText(
-                text = "Taxon Page",
+                text = "eBird account",
                 modifier = Modifier.padding(top = 8.dp),
                 onClick = { uriHandler.openUri(accountUrl) },
             )

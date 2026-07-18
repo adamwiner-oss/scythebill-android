@@ -22,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,8 +39,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.scythebill.birdlist.android.cache.CacheDao
 import com.scythebill.birdlist.android.ui.common.ExpandableSection
 import com.scythebill.birdlist.android.ui.common.StaticSection
-import com.scythebill.birdlist.android.ui.search.SpeciesSearchBar
-import com.scythebill.birdlist.android.ui.search.SpeciesSearchViewModel
 import com.scythebill.birdlist.model.taxa.Species
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
@@ -48,8 +47,9 @@ import com.scythebill.birdlist.model.taxa.Taxonomy
 @Composable
 fun TaxonomyBrowseScreen(
     viewModel: TaxonomyBrowseViewModel,
-    speciesSearchViewModel: SpeciesSearchViewModel,
     dao: CacheDao,
+    navigateToSpecies: Taxon? = null,
+    onNavigationHandled: () -> Unit = {},
 ) {
     when (val state = viewModel.uiState) {
         is TaxonomyBrowseUiState.Loading -> Box(
@@ -66,7 +66,12 @@ fun TaxonomyBrowseScreen(
             Text("Failed to load taxonomy: ${state.message}")
         }
 
-        is TaxonomyBrowseUiState.Loaded -> TaxonomyBrowseContent(state.taxonomy, speciesSearchViewModel, dao)
+        is TaxonomyBrowseUiState.Loaded -> TaxonomyBrowseContent(
+            state.taxonomy,
+            dao,
+            navigateToSpecies,
+            onNavigationHandled,
+        )
     }
 }
 
@@ -74,14 +79,22 @@ fun TaxonomyBrowseScreen(
 @Composable
 private fun TaxonomyBrowseContent(
     taxonomy: Taxonomy,
-    speciesSearchViewModel: SpeciesSearchViewModel,
     dao: CacheDao,
+    navigateToSpecies: Taxon?,
+    onNavigationHandled: () -> Unit,
 ) {
     var stack by remember { mutableStateOf(listOf(taxonomy.getRoot())) }
     val current = stack.last()
 
     BackHandler(enabled = stack.size > 1) {
         stack = stack.dropLast(1)
+    }
+
+    LaunchedEffect(navigateToSpecies) {
+        navigateToSpecies?.let {
+            stack = stack + it
+            onNavigationHandled()
+        }
     }
 
     val isSpecies = current.getType() == Taxon.Type.species
@@ -120,11 +133,6 @@ private fun TaxonomyBrowseContent(
         }
 
         Column(modifier = Modifier.padding(padding)) {
-            SpeciesSearchBar(
-                viewModel = speciesSearchViewModel,
-                onSpeciesSelected = { taxon -> stack = stack + taxon },
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
             LazyColumn {
                 items(children, key = { it.getId() ?: it.getName() ?: "" }) { child ->
                     TaxonRow(child, onClick = {

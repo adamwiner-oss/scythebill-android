@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
@@ -13,6 +14,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -25,7 +27,11 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun QueryResultsScreen(viewModel: QueryViewModel) {
+fun QueryResultsScreen(
+    viewModel: QueryViewModel,
+    scrollToTaxonId: String? = null,
+    onScrollHandled: () -> Unit = {},
+) {
     val state by viewModel.uiState.collectAsState()
     when (val s = state) {
         is QueryResultsUiState.Loading -> Box(
@@ -51,7 +57,22 @@ fun QueryResultsScreen(viewModel: QueryViewModel) {
                     Text("No matching sightings")
                 }
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                val listState = rememberLazyListState()
+
+                LaunchedEffect(scrollToTaxonId, s.groups) {
+                    if (scrollToTaxonId == null) return@LaunchedEffect
+                    var index = 0
+                    for (group in s.groups) {
+                        if (group.taxon?.getId() == scrollToTaxonId) {
+                            listState.animateScrollToItem(index)
+                            onScrollHandled()
+                            break
+                        }
+                        index += 1 + group.rows.size
+                    }
+                }
+
+                LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                     s.groups.forEach { group ->
                         item(key = "header-${group.label}") {
                             SpeciesHeader(group)
