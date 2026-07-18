@@ -8,16 +8,12 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.sqlite.db.SimpleSQLiteQuery
 import com.scythebill.birdlist.android.cache.CacheDao
-import com.scythebill.birdlist.android.cache.DatePrecision
 import com.scythebill.birdlist.android.cache.LocationEntity
 import com.scythebill.birdlist.android.cache.QueryResultRow
+import com.scythebill.birdlist.android.ui.common.formatDate
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
 import com.scythebill.birdlist.model.taxa.Taxonomy
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -162,17 +158,6 @@ class QueryViewModel(
         val commonName = taxon.getCommonName()
         val scientificName = TaxonUtils.getFullName(taxon) ?: taxon.getName() ?: taxonId
         return if (commonName != null) "$commonName ($scientificName)" else scientificName
-    }
-
-    private fun formatDate(epochDay: Long?, precision: DatePrecision?): String {
-        if (epochDay == null) return "Unknown date"
-        val date = LocalDate.ofEpochDay(epochDay)
-        return when (precision) {
-            DatePrecision.YEAR -> date.year.toString()
-            DatePrecision.MONTH ->
-                "${date.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${date.year}"
-            DatePrecision.DAY, null -> date.format(DateTimeFormatter.ofPattern("MMM d, yyyy"))
-        }
     }
 
     class Factory(

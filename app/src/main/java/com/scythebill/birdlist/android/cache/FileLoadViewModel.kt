@@ -110,8 +110,13 @@ class FileLoadViewModel(
                 )
             }
             is ReportSetLoadResult.ParseFailure -> {
+                val message = result.throwable.message
                 _loadState.value = LoadState.ParseError(
-                    result.throwable.message ?: "Failed to load file"
+                    if (message == "IOC taxonomy must be present during upgrades") {
+                        ".bsxm file must be upgraded with desktop Scythebill"
+                    } else {
+                        message ?: "Failed to load file"
+                    }
                 )
             }
         }

@@ -30,6 +30,10 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.scythebill.birdlist.android.cache.CacheDao
+import com.scythebill.birdlist.android.ui.common.ExpandableSection
+import com.scythebill.birdlist.android.ui.common.StaticSection
 import com.scythebill.birdlist.android.ui.search.SpeciesSearchBar
 import com.scythebill.birdlist.android.ui.search.SpeciesSearchViewModel
 import com.scythebill.birdlist.model.taxa.Taxon
@@ -40,6 +44,7 @@ import com.scythebill.birdlist.model.taxa.Taxonomy
 fun TaxonomyBrowseScreen(
     viewModel: TaxonomyBrowseViewModel,
     speciesSearchViewModel: SpeciesSearchViewModel,
+    dao: CacheDao,
 ) {
     when (val state = viewModel.uiState) {
         is TaxonomyBrowseUiState.Loading -> Box(
@@ -56,13 +61,17 @@ fun TaxonomyBrowseScreen(
             Text("Failed to load taxonomy: ${state.message}")
         }
 
-        is TaxonomyBrowseUiState.Loaded -> TaxonomyBrowseContent(state.taxonomy, speciesSearchViewModel)
+        is TaxonomyBrowseUiState.Loaded -> TaxonomyBrowseContent(state.taxonomy, speciesSearchViewModel, dao)
     }
 }
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun TaxonomyBrowseContent(taxonomy: Taxonomy, speciesSearchViewModel: SpeciesSearchViewModel) {
+private fun TaxonomyBrowseContent(
+    taxonomy: Taxonomy,
+    speciesSearchViewModel: SpeciesSearchViewModel,
+    dao: CacheDao,
+) {
     var stack by remember { mutableStateOf(listOf(taxonomy.getRoot())) }
     val current = stack.last()
 
@@ -93,7 +102,7 @@ private fun TaxonomyBrowseContent(taxonomy: Taxonomy, speciesSearchViewModel: Sp
         }
     ) { padding ->
         if (isSpecies) {
-            SpeciesDetailContent(current, modifier = Modifier.padding(padding))
+            SpeciesDetailContent(current, dao, modifier = Modifier.padding(padding))
             return@Scaffold
         }
 
@@ -125,7 +134,7 @@ private fun TaxonomyBrowseContent(taxonomy: Taxonomy, speciesSearchViewModel: Sp
 }
 
 /** "Common name (*Scientific name*)", italicizing the scientific part. */
-private fun speciesLabel(taxon: Taxon): AnnotatedString {
+internal fun speciesLabel(taxon: Taxon): AnnotatedString {
     val commonName = taxon.getCommonName()
     val scientificName = TaxonUtils.getFullName(taxon) ?: taxon.getName() ?: ""
     return buildAnnotatedString {
@@ -142,11 +151,72 @@ private fun speciesLabel(taxon: Taxon): AnnotatedString {
     }
 }
 
+private enum class SpeciesDetailSection { INFO, GROUPS, SIGHTINGS }
+
 @Composable
-private fun SpeciesDetailContent(taxon: Taxon, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.padding(16.dp)) {
-        Text(speciesLabel(taxon))
-        // More species detail (photos, sightings, etc.) to come.
+private fun SpeciesDetailContent(taxon: Taxon, dao: CacheDao, modifier: Modifier = Modifier) {
+    val viewModel: SpeciesDetailViewModel = viewModel(
+        key = taxon.getId(),
+        factory = SpeciesDetailViewModel.Factory(taxon, dao),
+    )
+    var expandedSection by remember(taxon.getId()) { mutableStateOf(SpeciesDetailSection.INFO) }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        ExpandableSection(
+            title = "Species Info",
+            expanded = expandedSection == SpeciesDetailSection.INFO,
+            onToggle = { expandedSection = SpeciesDetailSection.INFO },
+        ) {
+            SpeciesInfoSection(taxon)
+        }
+
+        when (val state = viewModel.uiState) {
+            is SpeciesDetailUiState.Loading -> Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+
+            is SpeciesDetailUiState.Error -> Text("Failed to load species detail: ${state.message}")
+
+            is SpeciesDetailUiState.Loaded -> {
+                if (state.groupsOrSubspecies.isEmpty()) {
+                    StaticSection(title = "Subspecies/Groups", valueText = "Monotypic")
+                } else {
+                    ExpandableSection(
+                        title = "Subspecies/Groups",
+                        expanded = expandedSection == SpeciesDetailSection.GROUPS,
+                        onToggle = { expandedSection = SpeciesDetailSection.GROUPS },
+                    ) {
+                        Column {
+                            state.groupsOrSubspecies.forEach { child ->
+                                Text(speciesLabel(child))
+                            }
+                        }
+                    }
+                }
+
+                if (state.sightings.isEmpty()) {
+                    StaticSection(title = "Sightings", valueText = "Not recorded")
+                } else {
+                    ExpandableSection(
+                        title = "Sightings",
+                        expanded = expandedSection == SpeciesDetailSection.SIGHTINGS,
+                        onToggle = { expandedSection = SpeciesDetailSection.SIGHTINGS },
+                    ) {
+                        Column {
+                            state.sightings.forEach { row ->
+                                ListItem(
+                                    headlineContent = { Text(row.locationName) },
+                                    supportingContent = { Text(row.dateLabel) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -104,7 +104,11 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             when (tab) {
-                                MainTab.TAXONOMY -> TaxonomyBrowseScreen(taxonomyViewModel, speciesSearchViewModel)
+                                MainTab.TAXONOMY -> TaxonomyBrowseScreen(
+                                    taxonomyViewModel,
+                                    speciesSearchViewModel,
+                                    (application as ScythebillApplication).container.cacheDao(application),
+                                )
                                 MainTab.QUERY -> QueryScreen(queryViewModel)
                             }
                         }
