@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.stream.Collectors
 
 data class SpeciesMatch(val taxon: Taxon, val label: String)
 
@@ -44,7 +45,13 @@ class SpeciesSearchViewModel(
             val taxonomy = taxonomyDeferred.await()
             val ids = LinkedHashSet<String>()
             for (indexer in speciesIndexerGroups(taxonomy, namesPreferences)) {
-                ids.addAll(indexer.find(text))
+                // At least for now, only show species (the taxonomy indexers index
+                // everything) - the user can see the groups/subspecies
+                val found = indexer.find(text)
+                ids.addAll(found.stream().filter { id ->
+                    taxonomy.getTaxon(id)?.getType() == Taxon.Type.species
+                }.collect(Collectors.toList()))
+
                 if (ids.size >= MAX_MATCHES) break
             }
             _matches.value = ids.take(MAX_MATCHES).mapNotNull { id ->
