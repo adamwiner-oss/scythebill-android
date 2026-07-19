@@ -1,7 +1,9 @@
 package com.scythebill.birdlist.android.ui.common
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -41,7 +43,24 @@ fun SightingIndicators(row: ResultRow, modifier: Modifier = Modifier) {
                         modifier = Modifier
                             .padding(start = 4.dp)
                             .clickable {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+//                                try {
+//                                    // TODO: this code, sadly, does not work; Google Photos
+//                                    if (url.startsWith("https://photos.google.com/photo/")) {
+//                                        val photoId = url.removePrefix("https://photos.google.com/photo/")
+//                                        val googlePhotosIntent = Intent(Intent.ACTION_VIEW).apply {
+//                                            data = Uri.parse("googlephotos://media?id=$photoId")
+//                                            setPackage("com.google.android.apps.photos")
+//                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+//                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+//                                        }
+//                                        context.startActivity(googlePhotosIntent)
+//                                        return@clickable
+//                                    }
+//                                } catch (e: ActivityNotFoundException) {
+//                                }
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                )
                             },
                         color = MaterialTheme.colorScheme.primary,
                         textDecoration = TextDecoration.Underline,
