@@ -105,12 +105,14 @@ private fun LocationFieldRow(state: LocationFieldRowState) {
                     label = { Text("Search locations") },
                     modifier = Modifier.fillMaxWidth(),
                 )
-                val matches = state.viewModel.locations
-                    .filter {
-                        (state.viewModel.locationDisplayNames[it.id] ?: it.displayName)
-                            .contains(query, ignoreCase = true)
-                    }
-                    .take(20)
+                val locationsById = state.viewModel.locations.associateBy { it.id }
+                val matches = if (query.isBlank()) {
+                    emptyList()
+                } else {
+                    state.viewModel.locationIndexer.find(query)
+                        .mapNotNull { locationsById[it] }
+                        .take(20)
+                }
                 if (expanded && matches.isNotEmpty()) {
                     Surface(
                         tonalElevation = 2.dp,
