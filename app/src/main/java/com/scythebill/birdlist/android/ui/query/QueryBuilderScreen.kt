@@ -27,6 +27,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.scythebill.birdlist.android.cache.LocationEntity
 import java.time.Instant
@@ -49,10 +52,19 @@ private class LocationFieldRowState(val viewModel: QueryViewModel)
 
 @Composable
 private fun LocationFieldRow(state: LocationFieldRowState) {
-    var enabled by remember { mutableStateOf(false) }
-    var mode by remember { mutableStateOf(LocationFieldState.LocationMode.IN) }
-    var query by remember { mutableStateOf("") }
-    var selected by remember { mutableStateOf<LocationEntity?>(null) }
+    val initial = remember { state.viewModel.currentLocationField }
+    var enabled by remember { mutableStateOf(initial.enabled) }
+    var mode by remember { mutableStateOf(initial.mode) }
+    var selected by remember {
+        mutableStateOf(initial.locationId?.let { id -> state.viewModel.locations.find { it.id == id } })
+    }
+    var query by remember {
+        mutableStateOf(
+            TextFieldValue(
+                selected?.let { state.viewModel.locationDisplayNames[it.id] ?: it.displayName } ?: ""
+            )
+        )
+    }
     var expanded by remember { mutableStateOf(false) }
     var modeMenuExpanded by remember { mutableStateOf(false) }
 
@@ -99,17 +111,23 @@ private fun LocationFieldRow(state: LocationFieldRowState) {
                     onValueChange = {
                         query = it
                         selected = null
-                        expanded = it.isNotBlank()
+                        expanded = it.text.isNotBlank()
                         publish()
                     },
                     label = { Text("Search locations") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                query = query.copy(selection = TextRange(0, query.text.length))
+                            }
+                        },
                 )
                 val locationsById = state.viewModel.locations.associateBy { it.id }
-                val matches = if (query.isBlank()) {
+                val matches = if (query.text.isBlank()) {
                     emptyList()
                 } else {
-                    state.viewModel.locationIndexer.find(query)
+                    state.viewModel.locationIndexer.find(query.text)
                         .mapNotNull { locationsById[it] }
                         .take(20)
                 }
@@ -130,7 +148,7 @@ private fun LocationFieldRow(state: LocationFieldRowState) {
                                         .fillMaxWidth()
                                         .clickable {
                                             selected = location
-                                            query = displayName
+                                            query = TextFieldValue(displayName)
                                             expanded = false
                                             publish()
                                         }
@@ -147,10 +165,11 @@ private fun LocationFieldRow(state: LocationFieldRowState) {
 
 @Composable
 private fun DateFieldRow(viewModel: QueryViewModel) {
-    var enabled by remember { mutableStateOf(false) }
-    var mode by remember { mutableStateOf(DateFieldState.DateMode.BETWEEN) }
-    var from by remember { mutableStateOf<LocalDate?>(null) }
-    var to by remember { mutableStateOf<LocalDate?>(null) }
+    val initial = remember { viewModel.currentDateField }
+    var enabled by remember { mutableStateOf(initial.enabled) }
+    var mode by remember { mutableStateOf(initial.mode) }
+    var from by remember { mutableStateOf(initial.from) }
+    var to by remember { mutableStateOf(initial.to) }
     var modeMenuExpanded by remember { mutableStateOf(false) }
     var showFromPicker by remember { mutableStateOf(false) }
     var showToPicker by remember { mutableStateOf(false) }
@@ -285,8 +304,9 @@ private fun DatePickerDialogPicker(
 
 @Composable
 private fun PhotographedFieldRow(viewModel: QueryViewModel) {
-    var enabled by remember { mutableStateOf(false) }
-    var hasPhoto by remember { mutableStateOf(true) }
+    val initial = remember { viewModel.currentPhotographedField }
+    var enabled by remember { mutableStateOf(initial.enabled) }
+    var hasPhoto by remember { mutableStateOf(initial.hasPhoto) }
 
     fun publish() {
         viewModel.setPhotographedField(PhotographedFieldState(enabled = enabled, hasPhoto = hasPhoto))

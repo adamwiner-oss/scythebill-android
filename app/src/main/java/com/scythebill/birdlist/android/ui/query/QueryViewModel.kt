@@ -86,6 +86,16 @@ class QueryViewModel(
     private val dateField = MutableStateFlow(DateFieldState())
     private val photographedField = MutableStateFlow(PhotographedFieldState())
 
+    /**
+     * Current field values, exposed so [QueryBuilderScreen]'s rows can seed
+     * their local UI state from the last-published value when they're
+     * recomposed from scratch (e.g. after the query builder is collapsed
+     * and re-expanded), instead of resetting to defaults.
+     */
+    val currentLocationField: LocationFieldState get() = locationField.value
+    val currentDateField: DateFieldState get() = dateField.value
+    val currentPhotographedField: PhotographedFieldState get() = photographedField.value
+
     var locations: List<LocationEntity> by mutableStateOf(emptyList())
         private set
 
