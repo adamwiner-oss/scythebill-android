@@ -91,6 +91,6 @@ class SpeciesSearchViewModel(
 
     private companion object {
         const val DEBOUNCE_MILLIS = 200L
-        const val MAX_MATCHES = 20
+        const val MAX_MATCHES = 100
     }
 }
