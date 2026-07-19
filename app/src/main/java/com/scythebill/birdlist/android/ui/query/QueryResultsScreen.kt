@@ -170,8 +170,19 @@ private fun ResultRowItem(row: ResultRow) {
     ListItem(
         headlineContent = { Text(row.locationName) },
         supportingContent = { Text(row.dateLabel) },
-        trailingContent = if (row.heardOnly || row.introduced || row.photographed) {
-            { SightingIndicators(row) }
+        trailingContent = if (row.heardOnly || row.introduced || row.photographed || row.ambiguousBadge != null) {
+            {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (row.ambiguousBadge != null) {
+                        Text(
+                            "(${row.ambiguousBadge})",
+                            modifier = Modifier.padding(end = 4.dp),
+                            fontStyle = FontStyle.Italic,
+                        )
+                    }
+                    SightingIndicators(row)
+                }
+            }
         } else null,
     )
 }

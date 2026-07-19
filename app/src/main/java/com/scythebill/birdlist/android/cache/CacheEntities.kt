@@ -59,6 +59,16 @@ data class SightingEntity(
     val firstForTaxon: Boolean,
     /** Base taxonomy ID the sighting's taxon was resolved against (TaxonUtils.getBaseTaxonomy). */
     val taxonomyId: String,
+    /**
+     * SightingTaxon.Resolved.getType() after raising every component to
+     * species level: SINGLE, SP, or HYBRID. A sp./hybrid of subspecies of
+     * the same species collapses to SINGLE here.
+     */
+    val raisedTaxonType: String,
+    /** Sorted, comma-joined candidate species ids; null when raisedTaxonType is SINGLE. */
+    val raisedGroupKey: String?,
+    /** Joined display name (e.g. "Eastern/Western Warbling-Vireo"); null when SINGLE. */
+    val raisedDisplayName: String?,
 )
 
 @Entity(tableName = "sighting_details")
@@ -93,7 +103,7 @@ data class CacheMetadataEntity(
  * hasn't changed (e.g. a new column needs populating, or a bug in how existing
  * columns were populated is fixed).
  */
-const val CACHE_FORMAT_VERSION = 2
+const val CACHE_FORMAT_VERSION = 3
 
 /** Row shape produced by [CacheDao.queryResults]'s dynamically-built SQL. */
 data class QueryResultRow(
@@ -106,4 +116,7 @@ data class QueryResultRow(
     val sightingStatus: String?,
     val photoUrisJson: String?,
     val taxonId: String,
+    val raisedTaxonType: String,
+    val raisedGroupKey: String?,
+    val raisedDisplayName: String?,
 )

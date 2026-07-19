@@ -29,6 +29,7 @@
     <photo name="99">file:/tmp/example99.jpg</photo>
   </sighting>
   <sighting hybrid="spRheaame,spRheapen" loc="wa" date="2000-11"/>
+  <sighting sp="sspRheaameame,sspRheaameint" loc="wa" date="2004"/>
   <visit-info loc="wa" date="1998-09-19" time="09:40" observationType="historical">
     <area>2.805</area>
     <distance>0.805</distance>

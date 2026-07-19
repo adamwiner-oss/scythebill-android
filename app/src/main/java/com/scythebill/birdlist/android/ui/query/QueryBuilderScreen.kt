@@ -1,10 +1,14 @@
 package com.scythebill.birdlist.android.ui.query
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -13,6 +17,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDatePickerState
@@ -88,7 +93,7 @@ private fun LocationFieldRow(state: LocationFieldRowState) {
             }
         }
         if (enabled) {
-            Box2 {
+            Column {
                 OutlinedTextField(
                     value = query,
                     onValueChange = {
@@ -106,22 +111,31 @@ private fun LocationFieldRow(state: LocationFieldRowState) {
                             .contains(query, ignoreCase = true)
                     }
                     .take(20)
-                DropdownMenu(
-                    expanded = expanded && matches.isNotEmpty(),
-                    onDismissRequest = { expanded = false },
-                ) {
-                    matches.forEach { location ->
-                        val displayName = state.viewModel.locationDisplayNames[location.id]
-                            ?: location.displayName
-                        DropdownMenuItem(
-                            text = { Text(displayName) },
-                            onClick = {
-                                selected = location
-                                query = displayName
-                                expanded = false
-                                publish()
-                            },
-                        )
+                if (expanded && matches.isNotEmpty()) {
+                    Surface(
+                        tonalElevation = 2.dp,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 200.dp),
+                        ) {
+                            items(matches) { location ->
+                                val displayName = state.viewModel.locationDisplayNames[location.id]
+                                    ?: location.displayName
+                                Text(
+                                    displayName,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selected = location
+                                            query = displayName
+                                            expanded = false
+                                            publish()
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -3,6 +3,8 @@ package com.scythebill.birdlist.android.cache
 import com.scythebill.birdlist.model.sighting.Location
 import com.scythebill.birdlist.model.sighting.ReportSet
 import com.scythebill.birdlist.model.sighting.Sighting
+import com.scythebill.birdlist.model.sighting.SightingTaxon
+import com.scythebill.birdlist.model.taxa.Taxon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.joda.time.DateTimeFieldType
@@ -81,6 +83,15 @@ class SightingCacheBuilder(private val dao: CacheDao) {
 
         val sightingEntities = prepared.map { p ->
             val info = p.sighting.sightingInfo
+            val resolved = p.sighting.taxon.resolve(p.sighting.taxonomy)
+                .resolveParentOfType(Taxon.Type.species)
+            val raisedType = resolved.type
+            val (groupKey, displayName) = if (raisedType == SightingTaxon.Type.SINGLE) {
+                null to null
+            } else {
+                resolved.taxa.mapNotNull { taxon: Taxon -> taxon.getId() }.sorted().joinToString(",") to
+                    resolved.preferredSingleName
+            }
             SightingEntity(
                 locationId = p.sighting.locationId,
                 epochDay = p.epochDay,
@@ -97,6 +108,9 @@ class SightingCacheBuilder(private val dao: CacheDao) {
                 approximateNumber = info?.number?.toString(),
                 firstForTaxon = p.sighting in firstForTaxon,
                 taxonomyId = p.sighting.taxonomy.getId(),
+                raisedTaxonType = raisedType.name,
+                raisedGroupKey = groupKey,
+                raisedDisplayName = displayName,
             )
         }
         val ids = dao.insertSightings(sightingEntities)

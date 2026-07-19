@@ -106,7 +106,8 @@ class SpeciesDetailViewModel(
                 val placeholders = taxonIds.joinToString(",") { "?" }
                 val sql = """
                     SELECT s.id AS sightingId, s.locationId, s.epochDay, s.datePrecision,
-                           s.photographed, s.heardOnly, s.sightingStatus, sd.photoUrisJson, st.taxonId
+                           s.photographed, s.heardOnly, s.sightingStatus, sd.photoUrisJson, st.taxonId,
+                           s.raisedTaxonType, s.raisedGroupKey, s.raisedDisplayName
                     FROM sightings s
                     JOIN sighting_taxa st ON st.sightingId = s.id
                     LEFT JOIN sighting_details sd ON sd.sightingId = s.id
@@ -116,6 +117,7 @@ class SpeciesDetailViewModel(
                 val rows = dao.queryResults(SimpleSQLiteQuery(sql, taxonIds.toTypedArray()))
                 val locationNames = buildLocationDisplayNames(dao.getAllLocations())
                 rows
+                    .distinctBy { it.sightingId }
                     .sortedByDescending { it.epochDay ?: Long.MIN_VALUE }
                     .map { row ->
                         ResultRow(
@@ -125,7 +127,7 @@ class SpeciesDetailViewModel(
                             photographed = row.photographed,
                             heardOnly = row.heardOnly,
                             introduced = row.sightingStatus == SightingInfo.SightingStatus.INTRODUCED.name,
-                            countable = queryPreferences.isCountable(
+                            countable = row.raisedTaxonType == "SINGLE" && queryPreferences.isCountable(
                                 sightingStatus = row.sightingStatus,
                                 heardOnly = row.heardOnly,
                                 taxon = taxaById[row.taxonId],
@@ -136,6 +138,11 @@ class SpeciesDetailViewModel(
                                 subspeciesOrGroupLabels[row.taxonId]
                             } else {
                                 null
+                            },
+                            ambiguousBadge = when (row.raisedTaxonType) {
+                                "SP" -> "sp."
+                                "HYBRID" -> "hybrid"
+                                else -> null
                             },
                         )
                     }

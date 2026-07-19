@@ -40,7 +40,13 @@ sealed interface QueryResultsUiState {
     data class Loaded(val groups: List<SpeciesGroup>) : QueryResultsUiState
 }
 
-data class SpeciesGroup(val taxon: Taxon?, val label: String, val rows: List<ResultRow>) {
+data class SpeciesGroup(
+    val taxon: Taxon?,
+    val label: String,
+    val rows: List<ResultRow>,
+    val groupTaxonIds: Set<String>,
+    val sortIndex: Int,
+) {
     val countable: Boolean get() = rows.any { it.countable }
 }
 
@@ -54,6 +60,7 @@ data class ResultRow(
     val countable: Boolean,
     val photoUrls: List<String>,
     val subspeciesLabel: String? = null,
+    val ambiguousBadge: String? = null,
 )
 
 private data class QueryInputs(
@@ -122,7 +129,7 @@ class QueryViewModel(
 
     /** Ids of species with a sighting in the current report results. */
     val reportTaxonIds: StateFlow<Set<String>> = uiState
-        .map { (it as? QueryResultsUiState.Loaded)?.groups?.mapNotNull { g -> g.taxon?.getId() }?.toSet() ?: emptySet() }
+        .map { (it as? QueryResultsUiState.Loaded)?.groups?.flatMap { g -> g.groupTaxonIds }?.toSet() ?: emptySet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     private suspend fun runQuery(
@@ -140,7 +147,8 @@ class QueryViewModel(
             val args = listOf<Any>(baseTaxonomyId) + clauses.flatMap { it.second }
             val sql = """
                 SELECT s.id AS sightingId, s.locationId, s.epochDay, s.datePrecision,
-                       s.photographed, s.heardOnly, s.sightingStatus, sd.photoUrisJson, st.taxonId
+                       s.photographed, s.heardOnly, s.sightingStatus, sd.photoUrisJson, st.taxonId,
+                       s.raisedTaxonType, s.raisedGroupKey, s.raisedDisplayName
                 FROM sightings s
                 JOIN sighting_taxa st ON st.sightingId = s.id
                 LEFT JOIN sighting_details sd ON sd.sightingId = s.id
@@ -151,14 +159,29 @@ class QueryViewModel(
 
             val locationNames = buildLocationDisplayNames(locationsDeferred.await())
 
-            val groups = rows.groupBy { raisedSpeciesId(taxonomy, it.taxonId) }
-                .map { (taxonId, taxonRows) ->
-                    val taxon = taxonomy.getTaxon(taxonId)
-                    val label = speciesLabel(taxon, taxonId)
+            val groups = rows.groupBy { row -> row.raisedGroupKey ?: raisedSpeciesId(taxonomy, row.taxonId) }
+                .map { (groupKey, groupRows) ->
+                    val ambiguous = groupRows.first().raisedGroupKey != null
+                    val taxon = if (ambiguous) null else taxonomy.getTaxon(groupKey)
+                    val label = if (ambiguous) {
+                        groupRows.first().raisedDisplayName ?: groupKey
+                    } else {
+                        speciesLabel(taxon, groupKey)
+                    }
+                    val groupTaxonIds = if (ambiguous) groupKey.split(",").toSet() else setOfNotNull(taxon?.getId())
+                    val sortIndex = if (ambiguous) {
+                        groupTaxonIds.mapNotNull { taxonomy.getTaxon(it)?.getTaxonomyIndex() }
+                            .minOrNull() ?: Int.MAX_VALUE
+                    } else {
+                        taxon?.getTaxonomyIndex() ?: Int.MAX_VALUE
+                    }
                     SpeciesGroup(
                         taxon = taxon,
                         label = label,
-                        rows = taxonRows
+                        groupTaxonIds = groupTaxonIds,
+                        sortIndex = sortIndex,
+                        rows = groupRows
+                            .distinctBy { it.sightingId }
                             .sortedByDescending { it.epochDay ?: Long.MIN_VALUE }
                             .map { row ->
                                 ResultRow(
@@ -168,19 +191,20 @@ class QueryViewModel(
                                     photographed = row.photographed,
                                     heardOnly = row.heardOnly,
                                     introduced = row.sightingStatus == SightingInfo.SightingStatus.INTRODUCED.name,
-                                    countable = queryPreferences.isCountable(
+                                    countable = row.raisedTaxonType == "SINGLE" && queryPreferences.isCountable(
                                         sightingStatus = row.sightingStatus,
                                         heardOnly = row.heardOnly,
                                         taxon = taxonomy.getTaxon(row.taxonId),
                                     ),
                                     photoUrls = decodePhotoUris(row.photoUrisJson)
                                         .filter { it.startsWith("http://") || it.startsWith("https://") },
+                                    ambiguousBadge = ambiguousBadgeFor(row.raisedTaxonType),
                                 )
                             },
                     )
                 }
                 .sortedWith(
-                    compareBy<SpeciesGroup> { it.taxon?.getTaxonomyIndex() ?: Int.MAX_VALUE }
+                    compareBy<SpeciesGroup> { it.sortIndex }
                         .thenBy { it.label }
                 )
 
@@ -203,6 +227,12 @@ class QueryViewModel(
             taxon = taxon.getParent()
         }
         return taxon?.getId() ?: taxonId
+    }
+
+    private fun ambiguousBadgeFor(raisedTaxonType: String): String? = when (raisedTaxonType) {
+        "SP" -> "sp."
+        "HYBRID" -> "hybrid"
+        else -> null
     }
 
     private fun speciesLabel(taxon: Taxon?, taxonId: String): String {
