@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -89,13 +90,22 @@ private fun TaxonomyBrowseContent(
     var stack by remember { mutableStateOf(listOf(taxonomy.getRoot())) }
     val current = stack.last()
 
+    // Scroll position for each browse level (keyed by taxon id), so that
+    // navigating back to a family restores where the user left off.
+    val listStates = remember { mutableMapOf<String, LazyListState>() }
+
+    // Set when a species is opened without having browsed there (e.g. from
+    // search), so the family screen can scroll it into view once shown.
+    var pendingScrollTargetId by remember { mutableStateOf<String?>(null) }
+
     BackHandler(enabled = stack.size > 1) {
         stack = stack.dropLast(1)
     }
 
     LaunchedEffect(navigateToSpecies) {
-        navigateToSpecies?.let {
-            stack = stack + it
+        navigateToSpecies?.let { species ->
+            stack = ancestorChain(species)
+            pendingScrollTargetId = species.getId()
             onNavigationHandled()
         }
     }
@@ -135,8 +145,20 @@ private fun TaxonomyBrowseContent(
             current.getContents()
         }
 
+        val listStateKey = current.getId() ?: current.getName() ?: "root"
+        val listState = listStates.getOrPut(listStateKey) { LazyListState() }
+
+        LaunchedEffect(current, pendingScrollTargetId) {
+            val targetId = pendingScrollTargetId ?: return@LaunchedEffect
+            val index = children.indexOfFirst { it.getId() == targetId }
+            if (index >= 0) {
+                listState.animateScrollToItem(index)
+            }
+            pendingScrollTargetId = null
+        }
+
         Column(modifier = Modifier.padding(padding)) {
-            LazyColumn {
+            LazyColumn(state = listState) {
                 items(children, key = { it.getId() ?: it.getName() ?: "" }) { child ->
                     TaxonRow(child, onClick = {
                         if (child.getType() == Taxon.Type.species || child.getContents().isNotEmpty()) {
@@ -147,6 +169,18 @@ private fun TaxonomyBrowseContent(
             }
         }
     }
+}
+
+private fun ancestorChain(taxon: Taxon): List<Taxon> {
+    val chain = mutableListOf(taxon)
+    var parent = taxon.getParent()
+    while (parent != null) {
+        chain.add(parent)
+        parent = parent.getParent()
+    }
+    // Genera are skipped in the browse hierarchy — jump straight from
+    // family to species — so they must not appear in the stack either.
+    return chain.reversed().filter { it.getType() != Taxon.Type.genus }
 }
 
 /** "Common name (*Scientific name*)", italicizing the scientific part. */
