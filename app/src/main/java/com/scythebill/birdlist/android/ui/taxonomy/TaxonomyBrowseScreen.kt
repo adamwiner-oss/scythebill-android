@@ -90,6 +90,11 @@ private fun TaxonomyBrowseContent(
     var stack by remember { mutableStateOf(listOf(taxonomy.getRoot())) }
     val current = stack.last()
 
+    var sightedTaxonIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    LaunchedEffect(Unit) {
+        sightedTaxonIds = dao.getSightedTaxonIds().toSet()
+    }
+
     // Scroll position for each browse level (keyed by taxon id), so that
     // navigating back to a family restores where the user left off.
     val listStates = remember { mutableMapOf<String, LazyListState>() }
@@ -160,11 +165,15 @@ private fun TaxonomyBrowseContent(
         Column(modifier = Modifier.padding(padding)) {
             LazyColumn(state = listState) {
                 items(children, key = { it.getId() ?: it.getName() ?: "" }) { child ->
-                    TaxonRow(child, onClick = {
-                        if (child.getType() == Taxon.Type.species || child.getContents().isNotEmpty()) {
-                            stack = stack + child
-                        }
-                    })
+                    TaxonRow(
+                        child,
+                        sighted = isSighted(child, sightedTaxonIds),
+                        onClick = {
+                            if (child.getType() == Taxon.Type.species || child.getContents().isNotEmpty()) {
+                                stack = stack + child
+                            }
+                        },
+                    )
                 }
             }
         }
@@ -183,11 +192,14 @@ private fun ancestorChain(taxon: Taxon): List<Taxon> {
     return chain.reversed().filter { it.getType() != Taxon.Type.genus }
 }
 
-/** "Common name (*Scientific name*)", italicizing the scientific part. */
-internal fun speciesLabel(taxon: Taxon): AnnotatedString {
+/**
+ * "Common name (*Scientific name*)", italicizing the scientific part.
+ * When [italic], the whole label is italicized (used for unsighted species).
+ */
+internal fun speciesLabel(taxon: Taxon, italic: Boolean = false): AnnotatedString {
     val commonName = taxon.getCommonName()
     val scientificName = TaxonUtils.getFullName(taxon) ?: taxon.getName() ?: ""
-    return buildAnnotatedString {
+    fun build(): AnnotatedString = buildAnnotatedString {
         if (commonName != null) {
             append(commonName)
             append(" (")
@@ -199,6 +211,22 @@ internal fun speciesLabel(taxon: Taxon): AnnotatedString {
             append(")")
         }
     }
+    return if (italic) {
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                append(build())
+            }
+        }
+    } else {
+        build()
+    }
+}
+
+/** Whether [taxon] or any of its descendants (subspecies/groups) has a recorded sighting. */
+private fun isSighted(taxon: Taxon, sightedTaxonIds: Set<String>): Boolean {
+    fun idsOf(t: Taxon): Sequence<String> =
+        sequenceOf(t.getId()).filterNotNull() + t.getContents().asSequence().flatMap { idsOf(it) }
+    return idsOf(taxon).any { it in sightedTaxonIds }
 }
 
 private enum class SpeciesDetailSection { INFO, GROUPS, SIGHTINGS }
@@ -321,10 +349,10 @@ private fun TaxonWithRange(taxon: Taxon, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun TaxonRow(taxon: Taxon, onClick: () -> Unit) {
+private fun TaxonRow(taxon: Taxon, sighted: Boolean, onClick: () -> Unit) {
     if (taxon.getType() == Taxon.Type.species) {
         ListItem(
-            headlineContent = { Text(speciesLabel(taxon)) },
+            headlineContent = { Text(speciesLabel(taxon, italic = !sighted)) },
             modifier = Modifier.clickable(onClick = onClick)
         )
     } else {

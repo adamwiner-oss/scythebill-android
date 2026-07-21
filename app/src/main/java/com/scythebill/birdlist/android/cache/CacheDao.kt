@@ -37,6 +37,9 @@ interface CacheDao {
     @Query("DELETE FROM sighting_taxa")
     suspend fun clearSightingTaxa()
 
+    @Query("SELECT DISTINCT taxonId FROM sighting_taxa")
+    suspend fun getSightedTaxonIds(): List<String>
+
     @Query("DELETE FROM sighting_details")
     suspend fun clearSightingDetails()
 
