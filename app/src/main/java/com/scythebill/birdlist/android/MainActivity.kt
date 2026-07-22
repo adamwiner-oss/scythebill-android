@@ -327,20 +327,6 @@ private fun AppTopBar(
                 Icon(Icons.Filled.Menu, contentDescription = "Menu")
             }
             DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                DropdownMenuItem(
-                    text = { Text("Pick .bsxm file") },
-                    onClick = {
-                        menuExpanded = false
-                        onPickFile()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text("Report preferences") },
-                    onClick = {
-                        menuExpanded = false
-                        onEditReportPreferences()
-                    },
-                )
                 if (hasExtendedTaxonomies) {
                     DropdownMenuItem(
                         text = { Text("Select taxonomy") },
@@ -350,6 +336,20 @@ private fun AppTopBar(
                         },
                     )
                 }
+                DropdownMenuItem(
+                    text = { Text("Report preferences") },
+                    onClick = {
+                        menuExpanded = false
+                        onEditReportPreferences()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("Change .bsxm file") },
+                    onClick = {
+                        menuExpanded = false
+                        onPickFile()
+                    },
+                )
             }
             IconButton(onClick = {
                 if (searchExpanded) speciesSearchViewModel.clear()
