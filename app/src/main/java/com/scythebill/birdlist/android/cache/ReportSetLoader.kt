@@ -9,7 +9,6 @@ import com.scythebill.birdlist.model.taxa.Taxonomy
 import com.scythebill.birdlist.model.taxa.TaxonomyMappings
 import com.scythebill.birdlist.model.xml.VersionTooNewException
 import com.scythebill.birdlist.model.xml.XmlReportSetImport
-import java.io.InputStreamReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -32,15 +31,11 @@ class ReportSetLoader(
 ) {
     suspend fun load(uri: Uri): ReportSetLoadResult = withContext(Dispatchers.IO) {
         try {
-            val reportSet = contentResolver.openInputStream(uri)?.use { input ->
-                InputStreamReader(input, Charsets.UTF_8).use { reader ->
-                    XmlReportSetImport().importReportSet(
-                        reader, taxonomy, GuavaOptional.absent(), taxonomyMappings
-                    )
-                }
-            } ?: return@withContext ReportSetLoadResult.ParseFailure(
-                IllegalStateException("Could not open $uri")
-            )
+            val reportSet = BsxmContentSource.openReader(contentResolver, uri).use { reader ->
+                XmlReportSetImport().importReportSet(
+                    reader, taxonomy, GuavaOptional.absent(), taxonomyMappings
+                )
+            }
 
             val loadedVersion = reportSet.loadedVersion
             if (loadedVersion != ReportSets.VERSION_FORMAT_CURRENT) {

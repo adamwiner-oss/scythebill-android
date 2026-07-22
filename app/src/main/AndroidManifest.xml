@@ -15,7 +15,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- .bsxm by extension -->
+            <!-- .bsxm by extension, or a .zip wrapping exactly one .bsxm -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -24,11 +24,13 @@
                 <data android:scheme="file" />
                 <data android:host="*" />
                 <data android:pathPattern=".*\\.bsxm" />
+                <data android:pathPattern=".*\\.zip" />
             </intent-filter>
 
             <!-- Generic-MIME fallback: .bsxm has no registered MIME type, so
                  some senders attach it as application/octet-stream without a
-                 pathPattern the framework can match against. MainActivity
+                 pathPattern the framework can match against. Also covers
+                 .zip senders that only set the MIME type. MainActivity
                  re-validates the actual file name once it has the Uri,
                  regardless of which filter matched. -->
             <intent-filter>
@@ -36,6 +38,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="content" />
                 <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/zip" />
             </intent-filter>
         </activity>
     </application>

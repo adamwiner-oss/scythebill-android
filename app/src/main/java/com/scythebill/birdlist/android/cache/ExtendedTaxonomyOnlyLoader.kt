@@ -4,7 +4,6 @@ import android.content.ContentResolver
 import android.net.Uri
 import com.scythebill.birdlist.model.taxa.Taxonomy
 import com.scythebill.birdlist.model.xml.ExtendedTaxonomyNodeParser
-import java.io.InputStreamReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.xml.sax.Attributes
@@ -27,11 +26,9 @@ import com.scythebill.xml.TreeBuilder
 class ExtendedTaxonomyOnlyLoader(private val contentResolver: ContentResolver) {
 
     suspend fun load(uri: Uri, targetId: String): Taxonomy? = withContext(Dispatchers.IO) {
-        contentResolver.openInputStream(uri)?.use { input ->
-            InputStreamReader(input, Charsets.UTF_8).use { reader ->
-                TreeBuilder<Taxonomy>(null, Taxonomy::class.java)
-                    .parse(InputSource(reader), TargetTaxonomyParser(targetId))
-            }
+        BsxmContentSource.openReader(contentResolver, uri).use { reader ->
+            TreeBuilder<Taxonomy>(null, Taxonomy::class.java)
+                .parse(InputSource(reader), TargetTaxonomyParser(targetId))
         }
     }
 
