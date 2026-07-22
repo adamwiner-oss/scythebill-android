@@ -159,9 +159,7 @@ class MainActivity : ComponentActivity() {
                                         taxonomySelectionExpanded = false
                                         taxonomySwitching = true
                                         lifecycleScope.launch {
-                                            fileLoadViewModel.ensureExtendedTaxonomiesLoaded()
-                                            activeTaxonomyStore.extendedTaxonomies.value
-                                                .firstOrNull { it.getId() == descriptor.id }
+                                            fileLoadViewModel.loadExtendedTaxonomy(descriptor.id)
                                                 ?.let { activeTaxonomyStore.selectTaxonomy(it) }
                                             taxonomySwitching = false
                                         }

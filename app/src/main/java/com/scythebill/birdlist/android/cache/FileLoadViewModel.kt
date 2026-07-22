@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.scythebill.birdlist.android.ScythebillApplication
 import com.scythebill.birdlist.android.data.PickedFilePreferences
+import com.scythebill.birdlist.model.taxa.Taxonomy
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
@@ -35,11 +36,8 @@ class FileLoadViewModel(
     private val _loadState = MutableStateFlow<LoadState>(LoadState.Idle)
     val loadState: StateFlow<LoadState> = _loadState
 
-    /** Set once a file has been (fast-path or full) loaded, for [ensureExtendedTaxonomiesLoaded]. */
+    /** Set once a file has been (fast-path or full) loaded, for [loadExtendedTaxonomy]. */
     private var lastLoadedUri: Uri? = null
-
-    /** True once the full parse has run for [lastLoadedUri] and real [Taxonomy]s are known. */
-    private var extendedTaxonomiesFullyLoaded = false
 
     /**
      * Loads the last-picked file, if any, so it's covered by the caller's
@@ -96,7 +94,6 @@ class FileLoadViewModel(
             // Fast path: skip the expensive XML parse entirely. Extended-taxonomy
             // availability is known from cached metadata; the real Taxonomy objects
             // are parsed lazily only if the user opens "Select taxonomy".
-            extendedTaxonomiesFullyLoaded = false
             application.activeTaxonomyStore.setKnownExtendedTaxonomyDescriptors(
                 decodeExtendedTaxonomyDescriptors(existingMetadata?.extendedTaxonomyNamesJson)
             )
@@ -121,7 +118,6 @@ class FileLoadViewModel(
                     sourceLastModified = lastModified,
                     taxonomyVersion = result.reportSet.loadedVersion,
                 )
-                extendedTaxonomiesFullyLoaded = true
                 application.activeTaxonomyStore.setExtendedTaxonomies(
                     result.reportSet.extendedTaxonomies().toList()
                 )
@@ -148,26 +144,21 @@ class FileLoadViewModel(
     }
 
     /**
-     * Lazily runs the full parse (without rebuilding the sighting cache, since a cache-hit
-     * relaunch means the cache is already up to date) so real [com.scythebill.birdlist.model.taxa.Taxonomy]
-     * objects become available for switching, e.g. when the user opens "Select taxonomy".
-     * No-op if the descriptors were already backed by a full parse, or no file is loaded.
+     * Lazily parses just the single extended taxonomy identified by [id], e.g. when the
+     * user opens "Select taxonomy" and picks one. Uses [ExtendedTaxonomyOnlyLoader] to scan
+     * only that `<taxonomy>` element in the source `.bsxm`, ignoring sightings, locations,
+     * trips, and any other embedded extended taxonomies, rather than re-running the full
+     * [ReportSetLoader] parse. Returns `null` if no file is loaded, the id isn't found, or
+     * parsing fails. Cheap (a no-op cache lookup) if this taxonomy was already parsed, e.g.
+     * as part of the initial full-file import.
      */
-    suspend fun ensureExtendedTaxonomiesLoaded() {
-        if (extendedTaxonomiesFullyLoaded) return
-        val uri = lastLoadedUri ?: return
+    suspend fun loadExtendedTaxonomy(id: String): Taxonomy? {
+        application.activeTaxonomyStore.getCachedExtendedTaxonomy(id)?.let { return it }
+        val uri = lastLoadedUri ?: return null
 
-        val taxonomy = application.taxonomyDeferred.await()
-        val taxonomyMappings = application.container.taxonomyMappings()
-        val loader = ReportSetLoader(application.contentResolver, taxonomy, taxonomyMappings)
-
-        val result = loader.load(uri)
-        if (result is ReportSetLoadResult.Success) {
-            extendedTaxonomiesFullyLoaded = true
-            application.activeTaxonomyStore.setExtendedTaxonomies(
-                result.reportSet.extendedTaxonomies().toList()
-            )
-        }
+        val taxonomy = ExtendedTaxonomyOnlyLoader(application.contentResolver).load(uri, id)
+            ?: return null
+        return application.activeTaxonomyStore.cacheExtendedTaxonomy(taxonomy)
     }
 
     class Factory(

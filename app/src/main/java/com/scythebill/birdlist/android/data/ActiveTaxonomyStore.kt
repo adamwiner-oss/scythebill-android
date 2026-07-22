@@ -21,8 +21,9 @@ class ActiveTaxonomyStore(private val container: AppContainer) {
     private val _activeTaxonomy = MutableStateFlow<Taxonomy?>(null)
     val activeTaxonomy: StateFlow<Taxonomy?> = _activeTaxonomy.asStateFlow()
 
-    private val _extendedTaxonomies = MutableStateFlow<List<Taxonomy>>(emptyList())
-    val extendedTaxonomies: StateFlow<List<Taxonomy>> = _extendedTaxonomies.asStateFlow()
+    /** Extended taxonomies parsed so far this session, keyed by id, so switching back to one
+     * already loaded (whether via the initial full parse or a later partial parse) is instant. */
+    private val extendedTaxonomyCache = mutableMapOf<String, Taxonomy>()
 
     /**
      * Known id/name pairs for embedded extended taxonomies, available immediately even on a
@@ -52,22 +53,32 @@ class ActiveTaxonomyStore(private val container: AppContainer) {
      * taxonomy so switching to one later is instant.
      */
     suspend fun setExtendedTaxonomies(taxonomies: List<Taxonomy>) {
+        extendedTaxonomyCache.clear()
         for (taxonomy in taxonomies) {
             ensureIndexed(taxonomy)
+            extendedTaxonomyCache[taxonomy.getId()] = taxonomy
         }
-        _extendedTaxonomies.value = taxonomies
         _extendedTaxonomyDescriptors.value = taxonomies.map {
             ExtendedTaxonomyDescriptor(it.getId(), it.getName())
         }
         baseTaxonomy?.let { _activeTaxonomy.value = it }
     }
 
+    /** An already-parsed extended taxonomy for [id], if any, avoiding a re-parse. */
+    fun getCachedExtendedTaxonomy(id: String): Taxonomy? = extendedTaxonomyCache[id]
+
+    /** Indexes and caches a [Taxonomy] parsed on demand (see `ExtendedTaxonomyOnlyLoader`). */
+    suspend fun cacheExtendedTaxonomy(taxonomy: Taxonomy): Taxonomy {
+        ensureIndexed(taxonomy)
+        extendedTaxonomyCache[taxonomy.getId()] = taxonomy
+        return taxonomy
+    }
+
     /**
      * Cheap counterpart to [setExtendedTaxonomies] for a cache-hit relaunch: makes the
      * "Select taxonomy" menu entry available immediately from cached (id, name) metadata,
-     * without parsing the source file. The real [Taxonomy] objects are loaded lazily later
-     * (see `FileLoadViewModel.ensureExtendedTaxonomiesLoaded`), which then calls
-     * [setExtendedTaxonomies] to replace this placeholder state.
+     * without parsing the source file. The real [Taxonomy] objects are loaded lazily later,
+     * one at a time, via [cacheExtendedTaxonomy] (see `FileLoadViewModel.loadExtendedTaxonomy`).
      */
     fun setKnownExtendedTaxonomyDescriptors(descriptors: List<ExtendedTaxonomyDescriptor>) {
         _extendedTaxonomyDescriptors.value = descriptors

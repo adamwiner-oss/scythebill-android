@@ -45,6 +45,7 @@ android {
 
 dependencies {
     implementation(project(":model"))
+    implementation(project(":xml-parser"))
     implementation("com.google.guava:guava:33.5.0-jre")
     implementation("joda-time:joda-time:2.14.2")
 
