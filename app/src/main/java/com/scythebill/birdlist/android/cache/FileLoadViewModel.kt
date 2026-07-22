@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 sealed class LoadState {
     data object Idle : LoadState()
     data object Loading : LoadState()
+    data object Building : LoadState()
     data class VersionError(val message: String) : LoadState()
     data class ParseError(val message: String) : LoadState()
     data object Ready : LoadState()
@@ -105,6 +106,7 @@ class FileLoadViewModel(
     }
 
     private suspend fun parseAndRebuild(uri: Uri, size: Long, lastModified: Long) {
+        _loadState.value = LoadState.Building
         val taxonomy = application.taxonomyDeferred.await()
         val taxonomyMappings = application.container.taxonomyMappings()
         val loader = ReportSetLoader(application.contentResolver, taxonomy, taxonomyMappings)

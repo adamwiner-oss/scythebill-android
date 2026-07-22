@@ -107,11 +107,11 @@ class MainActivity : ComponentActivity() {
                         fileLoadViewModel.checkForPickedFileOnLaunch()
                         startupReady = true
                     }
+                    val loadState by fileLoadViewModel.loadState.collectAsState()
                     if (!startupReady) {
-                        StartupLoadingScreen()
+                        StartupLoadingScreen(loadState)
                     } else {
                         Column(modifier = Modifier.safeDrawingPadding()) {
-                            val loadState by fileLoadViewModel.loadState.collectAsState()
                             var tab by remember { mutableStateOf(MainTab.TAXONOMY) }
                             var searchExpanded by remember { mutableStateOf(false) }
                             var navigateToSpecies by remember { mutableStateOf<Taxon?>(null) }
@@ -274,11 +274,14 @@ private enum class MainTab(val label: String) {
 }
 
 @Composable
-private fun StartupLoadingScreen() {
+private fun StartupLoadingScreen(loadState: LoadState = LoadState.Loading) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator()
-            Text("Loading...", modifier = Modifier.padding(top = 16.dp))
+            Text(
+                if (loadState is LoadState.Building) "Building the cache..." else "Loading...",
+                modifier = Modifier.padding(top = 16.dp),
+            )
         }
     }
 }
@@ -297,6 +300,7 @@ private fun LoadFileBar(
             when (state) {
                 is LoadState.Idle -> "No file loaded"
                 is LoadState.Loading -> "Loading..."
+                is LoadState.Building -> "Building the cache..."
                 is LoadState.Ready -> "Cache ready"
                 is LoadState.VersionError -> (state as LoadState.VersionError).message
                 is LoadState.ParseError -> (state as LoadState.ParseError).message
