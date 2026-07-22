@@ -28,10 +28,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import com.scythebill.birdlist.android.cache.LocationEntity
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -50,20 +50,24 @@ fun QueryBuilderScreen(viewModel: QueryViewModel) {
 
 private class LocationFieldRowState(val viewModel: QueryViewModel)
 
+/** A location or synthetic location selected in the search box, by id + display label. */
+private data class SelectedLocation(val id: String, val displayName: String)
+
 @Composable
 private fun LocationFieldRow(state: LocationFieldRowState) {
+    val focusManager = LocalFocusManager.current
     val initial = remember { state.viewModel.currentLocationField }
     var enabled by remember { mutableStateOf(initial.enabled) }
     var mode by remember { mutableStateOf(initial.mode) }
     var selected by remember {
-        mutableStateOf(initial.locationId?.let { id -> state.viewModel.locations.find { it.id == id } })
+        mutableStateOf(
+            initial.locationId?.let { id ->
+                state.viewModel.locationDisplayNames[id]?.let { SelectedLocation(id, it) }
+            }
+        )
     }
     var query by remember {
-        mutableStateOf(
-            TextFieldValue(
-                selected?.let { state.viewModel.locationDisplayNames[it.id] ?: it.displayName } ?: ""
-            )
-        )
+        mutableStateOf(TextFieldValue(selected?.displayName ?: ""))
     }
     var expanded by remember { mutableStateOf(false) }
     var modeMenuExpanded by remember { mutableStateOf(false) }
@@ -123,12 +127,13 @@ private fun LocationFieldRow(state: LocationFieldRowState) {
                             }
                         },
                 )
-                val locationsById = state.viewModel.locations.associateBy { it.id }
                 val matches = if (query.text.isBlank()) {
                     emptyList()
                 } else {
                     state.viewModel.locationIndexer.find(query.text)
-                        .mapNotNull { locationsById[it] }
+                        .mapNotNull { id ->
+                            state.viewModel.locationDisplayNames[id]?.let { SelectedLocation(id, it) }
+                        }
                         .take(20)
                 }
                 if (expanded && matches.isNotEmpty()) {
@@ -140,15 +145,14 @@ private fun LocationFieldRow(state: LocationFieldRowState) {
                             modifier = Modifier.heightIn(max = 200.dp),
                         ) {
                             items(matches) { location ->
-                                val displayName = state.viewModel.locationDisplayNames[location.id]
-                                    ?: location.displayName
                                 Text(
-                                    displayName,
+                                    location.displayName,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable {
+                                            focusManager.clearFocus()
                                             selected = location
-                                            query = TextFieldValue(displayName)
+                                            query = TextFieldValue(location.displayName)
                                             expanded = false
                                             publish()
                                         }

@@ -28,6 +28,24 @@ data class LocationAncestorEntity(
     val depth: Int,
 )
 
+/** A pseudo-location (e.g. "ABA Region") from [com.scythebill.birdlist.model.query.SyntheticLocations]. */
+@Entity(tableName = "synthetic_locations")
+data class SyntheticLocationEntity(
+    @PrimaryKey val id: String,
+    val displayName: String,
+)
+
+/** Flattened membership: real location ids that fall within a synthetic location. */
+@Entity(
+    tableName = "synthetic_location_members",
+    primaryKeys = ["syntheticId", "locationId"],
+    indices = [Index("locationId")],
+)
+data class SyntheticLocationMemberEntity(
+    val syntheticId: String,
+    val locationId: String,
+)
+
 @Entity(tableName = "trips")
 data class TripEntity(
     @PrimaryKey val id: String,
@@ -110,7 +128,7 @@ data class CacheMetadataEntity(
  * hasn't changed (e.g. a new column needs populating, or a bug in how existing
  * columns were populated is fixed).
  */
-const val CACHE_FORMAT_VERSION = 3
+const val CACHE_FORMAT_VERSION = 4
 
 /** Row shape produced by [CacheDao.queryResults]'s dynamically-built SQL. */
 data class QueryResultRow(

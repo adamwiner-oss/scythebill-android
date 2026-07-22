@@ -2,6 +2,7 @@ package com.scythebill.birdlist.android.ui.search
 
 import com.google.common.collect.ImmutableMultimap
 import com.scythebill.birdlist.android.cache.LocationEntity
+import com.scythebill.birdlist.android.cache.SyntheticLocationEntity
 import com.scythebill.birdlist.model.util.Indexer
 
 private val ALTERNATE_INDEX_ENTRIES: ImmutableMultimap<String, String> =
@@ -31,6 +32,16 @@ fun buildLocationIndexer(locations: List<LocationEntity>): Indexer<String> {
         addToLocationIndex(index, loc, byId)
     }
     return index
+}
+
+/** Adds [syntheticLocations] (e.g. "ABA Region") to an existing location [index], keyed by id. */
+fun addSyntheticLocationsToIndex(
+    index: Indexer<String>,
+    syntheticLocations: List<SyntheticLocationEntity>,
+) {
+    for (loc in syntheticLocations) {
+        index.add(loc.displayName, loc.id)
+    }
 }
 
 private fun addToLocationIndex(

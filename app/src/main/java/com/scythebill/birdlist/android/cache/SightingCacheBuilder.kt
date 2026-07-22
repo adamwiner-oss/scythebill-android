@@ -1,5 +1,6 @@
 package com.scythebill.birdlist.android.cache
 
+import com.scythebill.birdlist.model.query.SyntheticLocations
 import com.scythebill.birdlist.model.sighting.Location
 import com.scythebill.birdlist.model.sighting.ReportSet
 import com.scythebill.birdlist.model.sighting.Sighting
@@ -47,6 +48,22 @@ class SightingCacheBuilder(private val dao: CacheDao) {
             }
         )
         dao.insertLocationAncestors(buildAncestorClosure(allLocations))
+
+        val syntheticLocations = SyntheticLocations(reportSet.locations)
+        val allLocationIds = allLocations.map { it.id }
+        val syntheticEntities = mutableListOf<SyntheticLocationEntity>()
+        val syntheticMemberEntities = mutableListOf<SyntheticLocationMemberEntity>()
+        for (synthetic in syntheticLocations.locations()) {
+            syntheticEntities += SyntheticLocationEntity(synthetic.id, synthetic.displayName)
+            val predicate = synthetic.isInLocationPredicate()
+            for (locationId in allLocationIds) {
+                if (predicate.apply(locationId)) {
+                    syntheticMemberEntities += SyntheticLocationMemberEntity(synthetic.id, locationId)
+                }
+            }
+        }
+        dao.insertSyntheticLocations(syntheticEntities)
+        dao.insertSyntheticLocationMembers(syntheticMemberEntities)
 
         dao.insertTrips(
             reportSet.trips.allTrips().map { trip ->

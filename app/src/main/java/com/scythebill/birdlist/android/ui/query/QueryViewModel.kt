@@ -10,11 +10,13 @@ import androidx.sqlite.db.SimpleSQLiteQuery
 import com.scythebill.birdlist.android.cache.CacheDao
 import com.scythebill.birdlist.android.cache.LocationEntity
 import com.scythebill.birdlist.android.cache.QueryResultRow
+import com.scythebill.birdlist.android.cache.SyntheticLocationEntity
 import com.scythebill.birdlist.android.cache.buildLocationDisplayNames
 import com.scythebill.birdlist.android.cache.decodePhotoUris
 import com.scythebill.birdlist.android.data.ActiveTaxonomyStore
 import com.scythebill.birdlist.android.data.QueryPreferencesStore
 import com.scythebill.birdlist.android.ui.common.formatDate
+import com.scythebill.birdlist.android.ui.search.addSyntheticLocationsToIndex
 import com.scythebill.birdlist.android.ui.search.buildLocationIndexer
 import com.scythebill.birdlist.model.sighting.SightingInfo
 import com.scythebill.birdlist.model.taxa.Taxon
@@ -102,6 +104,9 @@ class QueryViewModel(
     var locations: List<LocationEntity> by mutableStateOf(emptyList())
         private set
 
+    var syntheticLocations: List<SyntheticLocationEntity> by mutableStateOf(emptyList())
+        private set
+
     var locationDisplayNames: Map<String, String> by mutableStateOf(emptyMap())
         private set
 
@@ -111,11 +116,18 @@ class QueryViewModel(
     private val locationsDeferred: Deferred<List<LocationEntity>> =
         viewModelScope.async(Dispatchers.IO) { dao.getAllLocations() }
 
+    private val syntheticLocationsDeferred: Deferred<List<SyntheticLocationEntity>> =
+        viewModelScope.async(Dispatchers.IO) { dao.getAllSyntheticLocations() }
+
     init {
         viewModelScope.launch {
             locations = locationsDeferred.await()
-            locationDisplayNames = buildLocationDisplayNames(locations)
-            locationIndexer = buildLocationIndexer(locations)
+            syntheticLocations = syntheticLocationsDeferred.await()
+            locationDisplayNames = buildLocationDisplayNames(locations) +
+                syntheticLocations.associate { it.id to it.displayName }
+            val index = buildLocationIndexer(locations)
+            addSyntheticLocationsToIndex(index, syntheticLocations)
+            locationIndexer = index
         }
     }
 

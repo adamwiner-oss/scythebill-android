@@ -17,6 +17,12 @@ interface CacheDao {
     suspend fun insertLocationAncestors(rows: List<LocationAncestorEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSyntheticLocations(rows: List<SyntheticLocationEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSyntheticLocationMembers(rows: List<SyntheticLocationMemberEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTrips(rows: List<TripEntity>)
 
     @Insert
@@ -58,6 +64,12 @@ interface CacheDao {
     @Query("DELETE FROM location_ancestors")
     suspend fun clearLocationAncestors()
 
+    @Query("DELETE FROM synthetic_location_members")
+    suspend fun clearSyntheticLocationMembers()
+
+    @Query("DELETE FROM synthetic_locations")
+    suspend fun clearSyntheticLocations()
+
     @Query("DELETE FROM locations")
     suspend fun clearLocations()
 
@@ -70,6 +82,8 @@ interface CacheDao {
         clearSightingDetails()
         clearSightings()
         clearLocationAncestors()
+        clearSyntheticLocationMembers()
+        clearSyntheticLocations()
         clearLocations()
         clearTrips()
     }
@@ -86,6 +100,9 @@ interface CacheDao {
 
     @Query("SELECT * FROM locations")
     suspend fun getAllLocations(): List<LocationEntity>
+
+    @Query("SELECT * FROM synthetic_locations")
+    suspend fun getAllSyntheticLocations(): List<SyntheticLocationEntity>
 
     @RawQuery
     suspend fun queryResults(query: SupportSQLiteQuery): List<QueryResultRow>

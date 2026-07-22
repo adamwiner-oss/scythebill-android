@@ -9,13 +9,15 @@ import androidx.room.RoomDatabase
     entities = [
         LocationEntity::class,
         LocationAncestorEntity::class,
+        SyntheticLocationEntity::class,
+        SyntheticLocationMemberEntity::class,
         TripEntity::class,
         SightingEntity::class,
         SightingDetailsEntity::class,
         SightingTaxonEntity::class,
         CacheMetadataEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class ScythebillDatabase : RoomDatabase() {

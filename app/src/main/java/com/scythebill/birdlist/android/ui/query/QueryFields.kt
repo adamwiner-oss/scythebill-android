@@ -1,5 +1,6 @@
 package com.scythebill.birdlist.android.ui.query
 
+import com.scythebill.birdlist.model.query.SyntheticLocation
 import java.time.LocalDate
 import java.time.Year
 
@@ -18,11 +19,14 @@ data class LocationFieldState(
 
     fun clause(): Pair<String, List<Any>>? {
         if (!enabled || locationId == null) return null
+        val table = if (SyntheticLocation.isSyntheticLocation(locationId)) {
+            "synthetic_location_members WHERE syntheticId = ?"
+        } else {
+            "location_ancestors WHERE ancestorId = ?"
+        }
         val sql = when (mode) {
-            LocationMode.IN ->
-                "s.locationId IN (SELECT locationId FROM location_ancestors WHERE ancestorId = ?)"
-            LocationMode.NOT_IN ->
-                "s.locationId NOT IN (SELECT locationId FROM location_ancestors WHERE ancestorId = ?)"
+            LocationMode.IN -> "s.locationId IN (SELECT locationId FROM $table)"
+            LocationMode.NOT_IN -> "s.locationId NOT IN (SELECT locationId FROM $table)"
         }
         return sql to listOf(locationId)
     }
