@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.sqlite.db.SimpleSQLiteQuery
 import com.scythebill.birdlist.android.cache.CacheDao
+import com.scythebill.birdlist.android.cache.LoadState
 import com.scythebill.birdlist.android.cache.LocationEntity
 import com.scythebill.birdlist.android.cache.QueryResultRow
 import com.scythebill.birdlist.android.cache.SyntheticLocationEntity
@@ -23,9 +24,7 @@ import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
 import com.scythebill.birdlist.model.taxa.Taxonomy
 import com.scythebill.birdlist.model.util.Indexer
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -82,6 +81,7 @@ class QueryViewModel(
     private val dao: CacheDao,
     private val activeTaxonomyStore: ActiveTaxonomyStore,
     private val queryPreferencesStore: QueryPreferencesStore? = null,
+    private val loadState: Flow<LoadState> = flowOf(LoadState.Ready),
 ) : ViewModel() {
 
     private val queryPreferencesFlow: Flow<QueryPreferences> =
@@ -113,22 +113,28 @@ class QueryViewModel(
     var locationIndexer: Indexer<String> by mutableStateOf(Indexer())
         private set
 
-    private val locationsDeferred: Deferred<List<LocationEntity>> =
-        viewModelScope.async(Dispatchers.IO) { dao.getAllLocations() }
-
-    private val syntheticLocationsDeferred: Deferred<List<SyntheticLocationEntity>> =
-        viewModelScope.async(Dispatchers.IO) { dao.getAllSyntheticLocations() }
-
     init {
+        // Re-read whenever a file (re-)finishes loading, not just once at
+        // construction: this ViewModel is Activity-scoped and can outlive a
+        // cache rebuild triggered by the first file pick or by opening a
+        // different file later.
         viewModelScope.launch {
-            locations = locationsDeferred.await()
-            syntheticLocations = syntheticLocationsDeferred.await()
-            locationDisplayNames = buildLocationDisplayNames(locations) +
-                syntheticLocations.associate { it.id to it.displayName }
-            val index = buildLocationIndexer(locations)
-            addSyntheticLocationsToIndex(index, syntheticLocations)
-            locationIndexer = index
+            loadState.collect { state ->
+                if (state == LoadState.Ready) {
+                    reloadLocations()
+                }
+            }
         }
+    }
+
+    private suspend fun reloadLocations() {
+        locations = withContext(Dispatchers.IO) { dao.getAllLocations() }
+        syntheticLocations = withContext(Dispatchers.IO) { dao.getAllSyntheticLocations() }
+        locationDisplayNames = buildLocationDisplayNames(locations) +
+            syntheticLocations.associate { it.id to it.displayName }
+        val index = buildLocationIndexer(locations)
+        addSyntheticLocationsToIndex(index, syntheticLocations)
+        locationIndexer = index
     }
 
     fun setLocationField(state: LocationFieldState) {
@@ -192,7 +198,7 @@ class QueryViewModel(
             """.trimIndent()
             val rows = dao.queryResults(SimpleSQLiteQuery(sql, args.toTypedArray()))
 
-            val locationNames = buildLocationDisplayNames(locationsDeferred.await())
+            val locationNames = buildLocationDisplayNames(locations)
 
             val groups = rows.groupBy { row -> row.raisedGroupKey ?: raisedSpeciesId(taxonomy, row.taxonId) }
                 .map { (groupKey, groupRows) ->
@@ -281,10 +287,11 @@ class QueryViewModel(
         private val dao: CacheDao,
         private val activeTaxonomyStore: ActiveTaxonomyStore,
         private val queryPreferencesStore: QueryPreferencesStore,
+        private val loadState: Flow<LoadState>,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return QueryViewModel(dao, activeTaxonomyStore, queryPreferencesStore) as T
+            return QueryViewModel(dao, activeTaxonomyStore, queryPreferencesStore, loadState) as T
         }
     }
 }

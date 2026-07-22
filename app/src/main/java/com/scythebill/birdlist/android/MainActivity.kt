@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,6 +43,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.scythebill.birdlist.android.cache.FileLoadViewModel
@@ -81,6 +83,7 @@ class MainActivity : ComponentActivity() {
             (application as ScythebillApplication).container.cacheDao(application),
             (application as ScythebillApplication).activeTaxonomyStore,
             (application as ScythebillApplication).container.queryPreferencesStore(application),
+            fileLoadViewModel.loadState,
         )
     }
 
@@ -111,7 +114,9 @@ class MainActivity : ComponentActivity() {
                     if (!startupReady) {
                         StartupLoadingScreen(loadState)
                     } else {
-                        Column(modifier = Modifier.safeDrawingPadding()) {
+                        Box(modifier = Modifier.safeDrawingPadding()) {
+                          var taxonomySwitching by remember { mutableStateOf(false) }
+                          Column {
                             var tab by remember { mutableStateOf(MainTab.TAXONOMY) }
                             var searchExpanded by remember { mutableStateOf(false) }
                             var navigateToSpecies by remember { mutableStateOf<Taxon?>(null) }
@@ -143,7 +148,6 @@ class MainActivity : ComponentActivity() {
                             val extendedTaxonomyDescriptors by
                                 activeTaxonomyStore.extendedTaxonomyDescriptors.collectAsState()
                             var taxonomySelectionExpanded by remember { mutableStateOf(false) }
-                            var taxonomySwitching by remember { mutableStateOf(false) }
                             if (taxonomySelectionExpanded) {
                                 TaxonomySelectionDialog(
                                     baseTaxonomy = activeTaxonomyStore.baseTaxonomy,
@@ -168,56 +172,65 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
 
-                            if (taxonomySwitching) {
-                                StartupLoadingScreen()
+                            if (loadState !is LoadState.Ready) {
+                                LoadFileBar(
+                                    fileLoadViewModel = fileLoadViewModel,
+                                    onPickFile = { openDocumentLauncher.launch(arrayOf("*/*")) },
+                                )
                             } else {
-                                if (loadState !is LoadState.Ready) {
-                                    LoadFileBar(
-                                        fileLoadViewModel = fileLoadViewModel,
-                                        onPickFile = { openDocumentLauncher.launch(arrayOf("*/*")) },
-                                    )
-                                } else {
-                                    AppTopBar(
-                                        onPickFile = { openDocumentLauncher.launch(arrayOf("*/*")) },
-                                        onEditReportPreferences = { reportPreferencesExpanded = true },
-                                        hasExtendedTaxonomies = extendedTaxonomyDescriptors.isNotEmpty(),
-                                        onSelectTaxonomy = { taxonomySelectionExpanded = true },
-                                        searchExpanded = searchExpanded,
-                                        onSearchToggle = { searchExpanded = !searchExpanded },
-                                        speciesSearchViewModel = speciesSearchViewModel,
-                                        onSpeciesSelected = { taxon ->
-                                            if (tab == MainTab.QUERY) {
-                                                scrollToTaxonId = taxon.getId()
-                                            } else {
-                                                navigateToSpecies = taxon
-                                            }
-                                            searchExpanded = false
-                                        },
-                                    )
-                                }
-                                TabRow(selectedTabIndex = tab.ordinal) {
-                                    MainTab.entries.forEach { t ->
-                                        Tab(
-                                            selected = tab == t,
-                                            onClick = { tab = t },
-                                            text = { Text(t.label) },
-                                        )
-                                    }
-                                }
-                                when (tab) {
-                                    MainTab.TAXONOMY -> TaxonomyBrowseScreen(
-                                        taxonomyViewModel,
-                                        (application as ScythebillApplication).container.cacheDao(application),
-                                        navigateToSpecies = navigateToSpecies,
-                                        onNavigationHandled = { navigateToSpecies = null },
-                                    )
-                                    MainTab.QUERY -> QueryScreen(
-                                        queryViewModel,
-                                        scrollToTaxonId = scrollToTaxonId,
-                                        onScrollHandled = { scrollToTaxonId = null },
+                                AppTopBar(
+                                    onPickFile = { openDocumentLauncher.launch(arrayOf("*/*")) },
+                                    onEditReportPreferences = { reportPreferencesExpanded = true },
+                                    hasExtendedTaxonomies = extendedTaxonomyDescriptors.isNotEmpty(),
+                                    onSelectTaxonomy = { taxonomySelectionExpanded = true },
+                                    searchExpanded = searchExpanded,
+                                    onSearchToggle = { searchExpanded = !searchExpanded },
+                                    speciesSearchViewModel = speciesSearchViewModel,
+                                    onSpeciesSelected = { taxon ->
+                                        if (tab == MainTab.QUERY) {
+                                            scrollToTaxonId = taxon.getId()
+                                        } else {
+                                            navigateToSpecies = taxon
+                                        }
+                                        searchExpanded = false
+                                    },
+                                )
+                            }
+                            TabRow(selectedTabIndex = tab.ordinal) {
+                                MainTab.entries.forEach { t ->
+                                    Tab(
+                                        selected = tab == t,
+                                        onClick = { tab = t },
+                                        text = { Text(t.label) },
                                     )
                                 }
                             }
+                            when (tab) {
+                                MainTab.TAXONOMY -> TaxonomyBrowseScreen(
+                                    taxonomyViewModel,
+                                    (application as ScythebillApplication).container.cacheDao(application),
+                                    navigateToSpecies = navigateToSpecies,
+                                    onNavigationHandled = { navigateToSpecies = null },
+                                )
+                                MainTab.QUERY -> QueryScreen(
+                                    queryViewModel,
+                                    scrollToTaxonId = scrollToTaxonId,
+                                    onScrollHandled = { scrollToTaxonId = null },
+                                )
+                            }
+                          }
+                          if (taxonomySwitching ||
+                              loadState is LoadState.Loading ||
+                              loadState is LoadState.Building
+                          ) {
+                              LoadingOverlay(
+                                  message = if (loadState is LoadState.Building) {
+                                      "Building the cache..."
+                                  } else {
+                                      "Loading..."
+                                  },
+                              )
+                          }
                         }
                     }
                 }
@@ -280,6 +293,25 @@ private fun StartupLoadingScreen(loadState: LoadState = LoadState.Loading) {
             CircularProgressIndicator()
             Text(
                 if (loadState is LoadState.Building) "Building the cache..." else "Loading...",
+                modifier = Modifier.padding(top = 16.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LoadingOverlay(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator()
+            Text(
+                message,
+                color = Color.White,
                 modifier = Modifier.padding(top = 16.dp),
             )
         }
