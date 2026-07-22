@@ -95,6 +95,13 @@ data class CacheMetadataEntity(
     val builtAtEpochMillis: Long,
     /** Bumped whenever the cache's row shape or population logic changes, to force a rebuild. */
     val cacheFormatVersion: Int,
+    /**
+     * Encoded [com.scythebill.birdlist.android.data.ExtendedTaxonomyDescriptor] list for any
+     * taxonomies embedded in the source `.bsxm`, so a cache-hit relaunch can know they exist
+     * (and show the "Select taxonomy" menu) without re-parsing the whole file. See
+     * [encodeExtendedTaxonomyDescriptors]/[decodeExtendedTaxonomyDescriptors].
+     */
+    val extendedTaxonomyNamesJson: String? = null,
 )
 
 /**

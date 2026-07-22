@@ -87,12 +87,12 @@ private fun TaxonomyBrowseContent(
     navigateToSpecies: Taxon?,
     onNavigationHandled: () -> Unit,
 ) {
-    var stack by remember { mutableStateOf(listOf(taxonomy.getRoot())) }
+    var stack by remember(taxonomy) { mutableStateOf(listOf(taxonomy.getRoot())) }
     val current = stack.last()
 
-    var sightedTaxonIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    LaunchedEffect(Unit) {
-        sightedTaxonIds = dao.getSightedTaxonIds().toSet()
+    var sightedTaxonIds by remember(taxonomy) { mutableStateOf<Set<String>>(emptySet()) }
+    LaunchedEffect(taxonomy) {
+        sightedTaxonIds = dao.getSightedTaxonIds(taxonomy.getId()).toSet()
     }
 
     // Scroll position for each browse level (keyed by taxon id), so that

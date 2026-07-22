@@ -12,6 +12,7 @@ import com.scythebill.birdlist.android.cache.LocationEntity
 import com.scythebill.birdlist.android.cache.QueryResultRow
 import com.scythebill.birdlist.android.cache.buildLocationDisplayNames
 import com.scythebill.birdlist.android.cache.decodePhotoUris
+import com.scythebill.birdlist.android.data.ActiveTaxonomyStore
 import com.scythebill.birdlist.android.data.QueryPreferencesStore
 import com.scythebill.birdlist.android.ui.common.formatDate
 import com.scythebill.birdlist.android.ui.search.buildLocationIndexer
@@ -29,6 +30,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
@@ -70,12 +72,13 @@ private data class QueryInputs(
     val date: DateFieldState,
     val photographed: PhotographedFieldState,
     val queryPreferences: QueryPreferences,
+    val taxonomy: Taxonomy,
 )
 
 @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class QueryViewModel(
     private val dao: CacheDao,
-    private val taxonomyDeferred: Deferred<Taxonomy>,
+    private val activeTaxonomyStore: ActiveTaxonomyStore,
     private val queryPreferencesStore: QueryPreferencesStore? = null,
 ) : ViewModel() {
 
@@ -135,11 +138,15 @@ class QueryViewModel(
             photographedField,
             queryPreferencesFlow,
         ) { location, date, photographed, queryPreferences ->
-            QueryInputs(location, date, photographed, queryPreferences)
+            Triple(location, date, photographed) to queryPreferences
         }
+            .combine(activeTaxonomyStore.activeTaxonomy.filterNotNull()) { (fields, queryPreferences), taxonomy ->
+                val (location, date, photographed) = fields
+                QueryInputs(location, date, photographed, queryPreferences, taxonomy)
+            }
             .debounce(250)
             .mapLatest { inputs ->
-                runQuery(inputs.location, inputs.date, inputs.photographed, inputs.queryPreferences)
+                runQuery(inputs.location, inputs.date, inputs.photographed, inputs.queryPreferences, inputs.taxonomy)
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), QueryResultsUiState.Loading)
 
@@ -153,9 +160,9 @@ class QueryViewModel(
         date: DateFieldState,
         photographed: PhotographedFieldState,
         queryPreferences: QueryPreferences,
+        taxonomy: Taxonomy,
     ): QueryResultsUiState = withContext(Dispatchers.IO) {
         try {
-            val taxonomy = taxonomyDeferred.await()
             val baseTaxonomyId = TaxonUtils.getBaseTaxonomy(taxonomy)!!.getId()
 
             val clauses = listOfNotNull(location.clause(), date.clause(), photographed.clause())
@@ -260,12 +267,12 @@ class QueryViewModel(
 
     class Factory(
         private val dao: CacheDao,
-        private val taxonomyDeferred: Deferred<Taxonomy>,
+        private val activeTaxonomyStore: ActiveTaxonomyStore,
         private val queryPreferencesStore: QueryPreferencesStore,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return QueryViewModel(dao, taxonomyDeferred, queryPreferencesStore) as T
+            return QueryViewModel(dao, activeTaxonomyStore, queryPreferencesStore) as T
         }
     }
 }

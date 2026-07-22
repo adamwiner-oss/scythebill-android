@@ -140,6 +140,7 @@ class SightingCacheBuilder(private val dao: CacheDao) {
                 taxonomyVersion = taxonomyVersion,
                 builtAtEpochMillis = System.currentTimeMillis(),
                 cacheFormatVersion = CACHE_FORMAT_VERSION,
+                extendedTaxonomyNamesJson = encodeExtendedTaxonomyDescriptors(reportSet.extendedTaxonomies()),
             )
         )
     }

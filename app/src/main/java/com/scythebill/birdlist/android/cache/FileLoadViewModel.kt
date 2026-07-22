@@ -35,6 +35,12 @@ class FileLoadViewModel(
     private val _loadState = MutableStateFlow<LoadState>(LoadState.Idle)
     val loadState: StateFlow<LoadState> = _loadState
 
+    /** Set once a file has been (fast-path or full) loaded, for [ensureExtendedTaxonomiesLoaded]. */
+    private var lastLoadedUri: Uri? = null
+
+    /** True once the full parse has run for [lastLoadedUri] and real [Taxonomy]s are known. */
+    private var extendedTaxonomiesFullyLoaded = false
+
     /**
      * Loads the last-picked file, if any, so it's covered by the caller's
      * single startup loading screen. Suspends rather than launching its own
@@ -78,16 +84,30 @@ class FileLoadViewModel(
         val lastModified = docFile.lastModified()
 
         val existingMetadata = cacheDao.getMetadata()
-        if (existingMetadata != null &&
+        val cacheHit = existingMetadata != null &&
             existingMetadata.sourceUri == uri.toString() &&
             existingMetadata.sourceSize == size &&
             existingMetadata.sourceLastModified == lastModified &&
             existingMetadata.cacheFormatVersion == CACHE_FORMAT_VERSION
-        ) {
+
+        lastLoadedUri = uri
+
+        if (cacheHit) {
+            // Fast path: skip the expensive XML parse entirely. Extended-taxonomy
+            // availability is known from cached metadata; the real Taxonomy objects
+            // are parsed lazily only if the user opens "Select taxonomy".
+            extendedTaxonomiesFullyLoaded = false
+            application.activeTaxonomyStore.setKnownExtendedTaxonomyDescriptors(
+                decodeExtendedTaxonomyDescriptors(existingMetadata?.extendedTaxonomyNamesJson)
+            )
             _loadState.value = LoadState.Ready
             return
         }
 
+        parseAndRebuild(uri, size, lastModified)
+    }
+
+    private suspend fun parseAndRebuild(uri: Uri, size: Long, lastModified: Long) {
         val taxonomy = application.taxonomyDeferred.await()
         val taxonomyMappings = application.container.taxonomyMappings()
         val loader = ReportSetLoader(application.contentResolver, taxonomy, taxonomyMappings)
@@ -100,6 +120,10 @@ class FileLoadViewModel(
                     sourceSize = size,
                     sourceLastModified = lastModified,
                     taxonomyVersion = result.reportSet.loadedVersion,
+                )
+                extendedTaxonomiesFullyLoaded = true
+                application.activeTaxonomyStore.setExtendedTaxonomies(
+                    result.reportSet.extendedTaxonomies().toList()
                 )
                 _loadState.value = LoadState.Ready
             }
@@ -120,6 +144,29 @@ class FileLoadViewModel(
                     }
                 )
             }
+        }
+    }
+
+    /**
+     * Lazily runs the full parse (without rebuilding the sighting cache, since a cache-hit
+     * relaunch means the cache is already up to date) so real [com.scythebill.birdlist.model.taxa.Taxonomy]
+     * objects become available for switching, e.g. when the user opens "Select taxonomy".
+     * No-op if the descriptors were already backed by a full parse, or no file is loaded.
+     */
+    suspend fun ensureExtendedTaxonomiesLoaded() {
+        if (extendedTaxonomiesFullyLoaded) return
+        val uri = lastLoadedUri ?: return
+
+        val taxonomy = application.taxonomyDeferred.await()
+        val taxonomyMappings = application.container.taxonomyMappings()
+        val loader = ReportSetLoader(application.contentResolver, taxonomy, taxonomyMappings)
+
+        val result = loader.load(uri)
+        if (result is ReportSetLoadResult.Success) {
+            extendedTaxonomiesFullyLoaded = true
+            application.activeTaxonomyStore.setExtendedTaxonomies(
+                result.reportSet.extendedTaxonomies().toList()
+            )
         }
     }
 

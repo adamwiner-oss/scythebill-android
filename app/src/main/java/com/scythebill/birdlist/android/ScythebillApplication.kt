@@ -1,6 +1,7 @@
 package com.scythebill.birdlist.android
 
 import android.app.Application
+import com.scythebill.birdlist.android.data.ActiveTaxonomyStore
 import com.scythebill.birdlist.android.di.AppContainer
 import com.scythebill.birdlist.model.taxa.Taxonomy
 import kotlinx.coroutines.CoroutineScope
@@ -22,6 +23,7 @@ import kotlinx.coroutines.async
 class ScythebillApplication : Application() {
     val container = AppContainer()
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val activeTaxonomyStore = ActiveTaxonomyStore(container)
 
     lateinit var taxonomyDeferred: Deferred<Taxonomy>
         private set
@@ -31,6 +33,7 @@ class ScythebillApplication : Application() {
         taxonomyDeferred = applicationScope.async {
             val taxonomy = container.loadTaxonomy()
             container.buildSpeciesIndexes(taxonomy)
+            activeTaxonomyStore.setBaseTaxonomy(taxonomy)
             taxonomy
         }
     }

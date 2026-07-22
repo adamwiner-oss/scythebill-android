@@ -103,7 +103,9 @@ class SpeciesDetailViewModel(
             val sightings = if (taxonIds.isEmpty()) {
                 emptyList()
             } else {
+                val taxonomyId = taxon.getTaxonomy()?.getId()
                 val placeholders = taxonIds.joinToString(",") { "?" }
+                val taxonomyClause = if (taxonomyId != null) "AND s.taxonomyId = ?" else ""
                 val sql = """
                     SELECT s.id AS sightingId, s.locationId, s.epochDay, s.datePrecision,
                            s.photographed, s.heardOnly, s.sightingStatus, sd.photoUrisJson, st.taxonId,
@@ -111,10 +113,11 @@ class SpeciesDetailViewModel(
                     FROM sightings s
                     JOIN sighting_taxa st ON st.sightingId = s.id
                     LEFT JOIN sighting_details sd ON sd.sightingId = s.id
-                    WHERE st.taxonId IN ($placeholders)
+                    WHERE st.taxonId IN ($placeholders) $taxonomyClause
                     ORDER BY s.epochDay DESC
                 """.trimIndent()
-                val rows = dao.queryResults(SimpleSQLiteQuery(sql, taxonIds.toTypedArray()))
+                val args: Array<Any> = (taxonIds + listOfNotNull(taxonomyId)).toTypedArray()
+                val rows = dao.queryResults(SimpleSQLiteQuery(sql, args))
                 val locationNames = buildLocationDisplayNames(dao.getAllLocations())
                 rows
                     .distinctBy { it.sightingId }

@@ -3,10 +3,10 @@ package com.scythebill.birdlist.android.ui.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.scythebill.birdlist.android.data.ActiveTaxonomyStore
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.Taxonomy
 import com.scythebill.birdlist.model.taxa.names.NamesPreferences
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.stream.Collectors
@@ -25,7 +26,7 @@ data class SpeciesMatch(val taxon: Taxon, val label: String)
  * the naming-mode order from [speciesIndexerGroups].
  */
 class SpeciesSearchViewModel(
-    private val taxonomyDeferred: Deferred<Taxonomy>,
+    private val activeTaxonomyStore: ActiveTaxonomyStore,
     private val namesPreferences: NamesPreferences = NamesPreferences(),
 ) : ViewModel() {
     private val _query = MutableStateFlow("")
@@ -42,6 +43,14 @@ class SpeciesSearchViewModel(
 
     private var searchJob: Job? = null
 
+    init {
+        viewModelScope.launch {
+            activeTaxonomyStore.activeTaxonomy.filterNotNull().collect {
+                clear()
+            }
+        }
+    }
+
     /** Restricts [matches] to taxa satisfying [predicate]; `{ true }` allows all. */
     fun setAllowedPredicate(predicate: (Taxon) -> Boolean) {
         _allowedPredicate.value = predicate
@@ -56,7 +65,7 @@ class SpeciesSearchViewModel(
         }
         searchJob = viewModelScope.launch {
             delay(DEBOUNCE_MILLIS)
-            val taxonomy = taxonomyDeferred.await()
+            val taxonomy = activeTaxonomyStore.activeTaxonomy.value ?: return@launch
             val ids = LinkedHashSet<String>()
             for (indexer in speciesIndexerGroups(taxonomy, namesPreferences)) {
                 // At least for now, only show species (the taxonomy indexers index
@@ -81,11 +90,11 @@ class SpeciesSearchViewModel(
     }
 
     class Factory(
-        private val taxonomyDeferred: Deferred<Taxonomy>,
+        private val activeTaxonomyStore: ActiveTaxonomyStore,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return SpeciesSearchViewModel(taxonomyDeferred) as T
+            return SpeciesSearchViewModel(activeTaxonomyStore) as T
         }
     }
 

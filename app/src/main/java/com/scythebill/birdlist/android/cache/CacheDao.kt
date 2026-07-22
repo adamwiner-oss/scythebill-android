@@ -40,6 +40,15 @@ interface CacheDao {
     @Query("SELECT DISTINCT taxonId FROM sighting_taxa")
     suspend fun getSightedTaxonIds(): List<String>
 
+    @Query(
+        """
+        SELECT DISTINCT st.taxonId FROM sighting_taxa st
+        JOIN sightings s ON s.id = st.sightingId
+        WHERE s.taxonomyId = :taxonomyId
+        """
+    )
+    suspend fun getSightedTaxonIds(taxonomyId: String): List<String>
+
     @Query("DELETE FROM sighting_details")
     suspend fun clearSightingDetails()
 
