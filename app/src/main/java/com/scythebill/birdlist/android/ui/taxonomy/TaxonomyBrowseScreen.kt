@@ -36,6 +36,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.scythebill.birdlist.android.ScythebillApplication
@@ -121,11 +122,7 @@ private fun TaxonomyBrowseContent(
         topBar = {
             TopAppBar(
                 title = {
-                    if (isSpecies) {
-                        Text(speciesLabel(current))
-                    } else {
-                        Text(current.getName() ?: taxonomy.getName())
-                    }
+                    Text(combinedLabel(current))
                 },
                 navigationIcon = {
                     if (stack.size > 1) {
@@ -192,13 +189,18 @@ private fun ancestorChain(taxon: Taxon): List<Taxon> {
     return chain.reversed().filter { it.getType() != Taxon.Type.genus }
 }
 
+internal enum class SpeciesLabelType {
+    None,
+    Italic,
+    Medium
+}
+
 /**
  * "Common name (*Scientific name*)", italicizing the scientific part.
- * When [italic], the whole label is italicized (used for unsighted species).
  */
-internal fun speciesLabel(taxon: Taxon, italic: Boolean = false): AnnotatedString {
+internal fun combinedLabel(taxon: Taxon, speciesLabelType: SpeciesLabelType = SpeciesLabelType.None): AnnotatedString {
     val commonName = taxon.getCommonName()
-    val scientificName = TaxonUtils.getFullName(taxon) ?: taxon.getName() ?: ""
+    val scientificName = TaxonUtils.getFullName(taxon) ?: ""
     fun build(): AnnotatedString = buildAnnotatedString {
         if (commonName != null) {
             append(commonName)
@@ -211,14 +213,24 @@ internal fun speciesLabel(taxon: Taxon, italic: Boolean = false): AnnotatedStrin
             append(")")
         }
     }
-    return if (italic) {
-        buildAnnotatedString {
-            withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                append(build())
+    return when (speciesLabelType) {
+        SpeciesLabelType.Italic -> {
+            buildAnnotatedString {
+                withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                    append(build())
+                }
             }
         }
-    } else {
-        build()
+        SpeciesLabelType.Medium -> {
+            buildAnnotatedString {
+                withStyle(SpanStyle(fontWeight = FontWeight.Medium)) {
+                    append(build())
+                }
+            }
+        }
+        else -> {
+            build()
+        }
     }
 }
 
@@ -337,7 +349,7 @@ private fun SpeciesDetailContent(taxon: Taxon, dao: CacheDao, modifier: Modifier
 private fun TaxonWithRange(taxon: Taxon, modifier: Modifier = Modifier) {
     val range = (taxon as? Species)?.let { TaxonUtils.getRange(it) }
     Column(modifier = modifier.padding(vertical = 4.dp)) {
-        Text(speciesLabel(taxon))
+        Text(combinedLabel(taxon))
         if (range != null) {
             Text(
                 range,
@@ -352,15 +364,17 @@ private fun TaxonWithRange(taxon: Taxon, modifier: Modifier = Modifier) {
 private fun TaxonRow(taxon: Taxon, sighted: Boolean, onClick: () -> Unit) {
     if (taxon.getType() == Taxon.Type.species) {
         ListItem(
-            headlineContent = { Text(speciesLabel(taxon, italic = !sighted)) },
+            headlineContent = { Text(combinedLabel(taxon,
+                if (sighted) SpeciesLabelType.Medium else  SpeciesLabelType.Italic)) },
             modifier = Modifier.clickable(onClick = onClick)
         )
     } else {
-        val commonName = taxon.getCommonName()
+        val primaryName = taxon.getCommonName() ?: TaxonUtils.getFullName(taxon) ?: ""
+        val secondaryName = if (taxon.getCommonName() == null) null else TaxonUtils.getFullName(taxon)
         ListItem(
-            headlineContent = { Text(taxon.getName() ?: "") },
-            supportingContent = if (commonName != null) {
-                { Text(commonName) }
+            headlineContent = { Text(primaryName, fontWeight = FontWeight.Medium) },
+            supportingContent = if (secondaryName != null) {
+                { Text(secondaryName) }
             } else null,
             modifier = Modifier.clickable(onClick = onClick)
         )

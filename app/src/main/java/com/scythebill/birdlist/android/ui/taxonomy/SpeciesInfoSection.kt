@@ -44,8 +44,6 @@ fun SpeciesInfoSection(taxon: Taxon, modifier: Modifier = Modifier) {
     val species = taxon as? Species
 
     Column(modifier = modifier) {
-        Text(speciesLabel(taxon))
-
         val status = species?.getStatus()
         if (status != null && status != Species.Status.LC) {
             Text(
