@@ -332,7 +332,7 @@ private fun SpeciesDetailContent(taxon: Taxon, dao: CacheDao, modifier: Modifier
                                             },
                                         )
                                     },
-                                    trailingContent = if (row.heardOnly || row.introduced || row.photographed) {
+                                    trailingContent = if (row.heardOnly || row.introduced || row.photographed || !row.countable || row.bvd) {
                                         { SightingIndicators(row) }
                                     } else null,
                                 )

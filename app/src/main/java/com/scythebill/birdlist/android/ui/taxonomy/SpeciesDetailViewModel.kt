@@ -130,6 +130,7 @@ class SpeciesDetailViewModel(
                             photographed = row.photographed,
                             heardOnly = row.heardOnly,
                             introduced = row.sightingStatus == SightingInfo.SightingStatus.INTRODUCED.name,
+                            bvd = row.sightingStatus == SightingInfo.SightingStatus.BETTER_VIEW_DESIRED.name,
                             countable = row.raisedTaxonType == "SINGLE" && queryPreferences.isCountable(
                                 sightingStatus = row.sightingStatus,
                                 heardOnly = row.heardOnly,

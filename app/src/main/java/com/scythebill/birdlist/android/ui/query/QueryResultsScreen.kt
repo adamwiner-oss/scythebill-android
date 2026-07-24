@@ -141,6 +141,8 @@ private fun SpeciesHeader(group: SpeciesGroup, expanded: Boolean, onToggle: () -
     }
     val allHeard = group.rows.isNotEmpty() && group.rows.all { it.heardOnly }
     val allIntroduced = group.rows.isNotEmpty() && group.rows.all { it.introduced }
+    val allBvd = group.rows.isNotEmpty() && group.rows.all { it.bvd }
+    val allNotCountable = group.rows.isNotEmpty() && group.rows.all { !it.countable }
     val rotation by animateFloatAsState(targetValue = if (expanded) 180f else 0f, label = "chevron")
     ListItem(
         modifier = Modifier.clickable(onClick = onToggle),
@@ -152,6 +154,12 @@ private fun SpeciesHeader(group: SpeciesGroup, expanded: Boolean, onToggle: () -
                 }
                 if (allIntroduced) {
                     Text("I", modifier = Modifier.padding(start = 4.dp))
+                }
+                if (allNotCountable) {
+                    Text("NC", modifier = Modifier.padding(start = 4.dp))
+                }
+                if (allBvd) {
+                    Text("BVD", modifier = Modifier.padding(start = 4.dp))
                 }
                 Icon(
                     Icons.Filled.KeyboardArrowDown,
@@ -170,7 +178,7 @@ private fun ResultRowItem(row: ResultRow) {
     ListItem(
         headlineContent = { Text(row.locationName) },
         supportingContent = { Text(row.dateLabel) },
-        trailingContent = if (row.heardOnly || row.introduced || row.photographed || row.ambiguousBadge != null) {
+        trailingContent = if (row.heardOnly || row.introduced || row.photographed || row.ambiguousBadge != null || !row.countable || row.bvd) {
             {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (row.ambiguousBadge != null) {

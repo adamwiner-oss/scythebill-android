@@ -62,6 +62,7 @@ data class ResultRow(
     val photographed: Boolean,
     val heardOnly: Boolean,
     val introduced: Boolean,
+    val bvd: Boolean,
     val countable: Boolean,
     val photoUrls: List<String>,
     val subspeciesLabel: String? = null,
@@ -232,6 +233,7 @@ class QueryViewModel(
                                     photographed = row.photographed,
                                     heardOnly = row.heardOnly,
                                     introduced = row.sightingStatus == SightingInfo.SightingStatus.INTRODUCED.name,
+                                    bvd = row.sightingStatus == SightingInfo.SightingStatus.BETTER_VIEW_DESIRED.name,
                                     countable = row.raisedTaxonType == "SINGLE" && queryPreferences.isCountable(
                                         sightingStatus = row.sightingStatus,
                                         heardOnly = row.heardOnly,

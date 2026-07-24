@@ -32,6 +32,9 @@ fun SightingIndicators(row: ResultRow, modifier: Modifier = Modifier) {
         if (row.introduced) {
             Text("I", modifier = Modifier.padding(start = 4.dp))
         }
+        if (row.bvd) {
+            Text("BVD", modifier = Modifier.padding(start = 4.dp))
+        }
         if (row.photographed) {
             if (row.photoUrls.isEmpty()) {
                 Text("P", modifier = Modifier.padding(start = 4.dp))
@@ -67,6 +70,9 @@ fun SightingIndicators(row: ResultRow, modifier: Modifier = Modifier) {
                     )
                 }
             }
+        }
+        if (!row.countable) {
+            Text("NC", modifier = Modifier.padding(start = 4.dp))
         }
     }
 }
