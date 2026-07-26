@@ -228,7 +228,7 @@ class QueryViewModel(
                             .map { row ->
                                 ResultRow(
                                     sightingId = row.sightingId,
-                                    locationName = locationNames[row.locationId] ?: row.locationId,
+                                    locationName = locationNames[row.locationId ?: ""] ?: row.locationId ?: "",
                                     dateLabel = formatDate(row.epochDay, row.datePrecision),
                                     photographed = row.photographed,
                                     heardOnly = row.heardOnly,

@@ -61,7 +61,7 @@ data class TripEntity(
 )
 data class SightingEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val locationId: String,
+    val locationId: String?,
     val epochDay: Long?,
     val datePrecision: DatePrecision?,
     val tripId: String?,
@@ -128,12 +128,12 @@ data class CacheMetadataEntity(
  * hasn't changed (e.g. a new column needs populating, or a bug in how existing
  * columns were populated is fixed).
  */
-const val CACHE_FORMAT_VERSION = 4
+const val CACHE_FORMAT_VERSION = 5
 
 /** Row shape produced by [CacheDao.queryResults]'s dynamically-built SQL. */
 data class QueryResultRow(
     val sightingId: Long,
-    val locationId: String,
+    val locationId: String?,
     val epochDay: Long?,
     val datePrecision: DatePrecision?,
     val photographed: Boolean,
