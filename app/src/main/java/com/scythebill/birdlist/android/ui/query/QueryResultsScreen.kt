@@ -26,14 +26,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.scythebill.birdlist.android.ScythebillApplication
 import com.scythebill.birdlist.android.ui.common.SightingIndicators
-import com.scythebill.birdlist.android.ui.common.localizedCommonName
+import com.scythebill.birdlist.android.ui.common.annotatedLabel
+import com.scythebill.birdlist.model.taxa.names.NamesPreferences
 
 @Composable
 fun QueryResultsScreen(
@@ -42,6 +45,9 @@ fun QueryResultsScreen(
     onScrollHandled: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val namesState by (context.applicationContext as ScythebillApplication)
+        .namesPreferencesStore.state.collectAsState()
     when (val s = state) {
         is QueryResultsUiState.Loading -> Box(
             modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -99,6 +105,7 @@ fun QueryResultsScreen(
                         item(key = "header-${group.label}") {
                             SpeciesHeader(
                                 group = group,
+                                mode = namesState.scientificOrCommon,
                                 expanded = expanded,
                                 onToggle = { expandedGroups[group.label] = !expanded },
                             )
@@ -116,23 +123,19 @@ fun QueryResultsScreen(
 }
 
 @Composable
-private fun SpeciesHeader(group: SpeciesGroup, expanded: Boolean, onToggle: () -> Unit) {
-    val commonName = group.taxon?.localizedCommonName()
-    val scientificName = group.taxon?.let {
-        com.scythebill.birdlist.model.taxa.TaxonUtils.getFullName(it)
-    } ?: group.label
+private fun SpeciesHeader(
+    group: SpeciesGroup,
+    mode: NamesPreferences.ScientificOrCommon,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
     val label = buildAnnotatedString {
         withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-            if (commonName != null) {
-                append(commonName)
-                append(" (")
-                withStyle(SpanStyle(fontStyle = FontStyle.Italic, fontWeight = FontWeight.Normal)) {
-                    append(scientificName)
-                }
-                append(")")
+            if (group.taxon != null) {
+                append(group.taxon.annotatedLabel(mode))
             } else {
                 withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                    append(scientificName)
+                    append(group.label)
                 }
             }
         }

@@ -19,13 +19,14 @@ import com.scythebill.birdlist.android.data.NamesPreferencesState
 import com.scythebill.birdlist.android.data.QueryPreferencesStore
 import com.scythebill.birdlist.android.data.UserFilterStore
 import com.scythebill.birdlist.android.ui.common.formatDate
-import com.scythebill.birdlist.android.ui.common.localizedCommonName
+import com.scythebill.birdlist.android.ui.common.formattedLabel
 import com.scythebill.birdlist.android.ui.search.addSyntheticLocationsToIndex
 import com.scythebill.birdlist.android.ui.search.buildLocationIndexer
 import com.scythebill.birdlist.model.sighting.SightingInfo
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
 import com.scythebill.birdlist.model.taxa.Taxonomy
+import com.scythebill.birdlist.model.taxa.names.NamesPreferences
 import com.scythebill.birdlist.model.util.Indexer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -80,6 +81,7 @@ private data class QueryInputs(
     val queryPreferences: QueryPreferences,
     val taxonomy: Taxonomy,
     val selectedUserId: String?,
+    val namesMode: NamesPreferences.ScientificOrCommon = NamesPreferences.ScientificOrCommon.COMMON_FIRST,
 )
 
 @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -89,7 +91,7 @@ class QueryViewModel(
     private val queryPreferencesStore: QueryPreferencesStore? = null,
     private val loadState: Flow<LoadState> = flowOf(LoadState.Ready),
     namesState: Flow<NamesPreferencesState> = flowOf(
-        NamesPreferencesState("en", com.scythebill.birdlist.model.taxa.names.NamesPreferences.ScientificOrCommon.COMMON_FIRST)
+        NamesPreferencesState("en", NamesPreferences.ScientificOrCommon.COMMON_FIRST)
     ),
     private val userFilterStore: UserFilterStore? = null,
 ) : ViewModel() {
@@ -97,10 +99,11 @@ class QueryViewModel(
     private val queryPreferencesFlow: Flow<QueryPreferences> =
         queryPreferencesStore?.preferencesFlow ?: flowOf(QueryPreferences.DEFAULT)
 
-    // Species labels are built from the shared Taxon/Taxonomy objects'
-    // localized names, not from this flow's value directly — combining it
-    // in just forces results (and their labels) to be recomputed whenever
-    // the locale or naming-mode preference changes.
+    // Common names are read straight off the shared Taxon/Taxonomy objects,
+    // so a locale change doesn't need this flow's value to take effect —
+    // but the naming-mode ("Common (Scientific)" vs "Scientific (Common)")
+    // does need it, and it also forces results to be recomputed whenever
+    // the locale changes.
     private val namesStateFlow: Flow<NamesPreferencesState> = namesState
 
     private val selectedUserIdFlow: Flow<String?> = userFilterStore?.selectedUserId ?: flowOf(null)
@@ -180,7 +183,7 @@ class QueryViewModel(
                 val (location, date, photographed) = fields
                 QueryInputs(location, date, photographed, queryPreferences, taxonomy, selectedUserId = null)
             }
-            .combine(namesStateFlow) { inputs, _ -> inputs }
+            .combine(namesStateFlow) { inputs, namesState -> inputs.copy(namesMode = namesState.scientificOrCommon) }
             .combine(selectedUserIdFlow) { inputs, selectedUserId -> inputs.copy(selectedUserId = selectedUserId) }
             // Re-run on every (re-)load, not just when a field/taxonomy/etc.
             // changes — activeTaxonomy stays the same object across file
@@ -196,6 +199,7 @@ class QueryViewModel(
                     inputs.queryPreferences,
                     inputs.taxonomy,
                     inputs.selectedUserId,
+                    inputs.namesMode,
                 )
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), QueryResultsUiState.Loading)
@@ -212,6 +216,7 @@ class QueryViewModel(
         queryPreferences: QueryPreferences,
         taxonomy: Taxonomy,
         selectedUserId: String?,
+        namesMode: NamesPreferences.ScientificOrCommon,
     ): QueryResultsUiState = withContext(Dispatchers.IO) {
         try {
             val baseTaxonomyId = TaxonUtils.getBaseTaxonomy(taxonomy)!!.getId()
@@ -245,7 +250,7 @@ class QueryViewModel(
                     val label = if (ambiguous) {
                         groupRows.first().raisedDisplayName ?: groupKey
                     } else {
-                        speciesLabel(taxon, groupKey)
+                        speciesLabel(taxon, groupKey, namesMode)
                     }
                     val groupTaxonIds = if (ambiguous) groupKey.split(",").toSet() else setOfNotNull(taxon?.getId())
                     val sortIndex = if (ambiguous) {
@@ -315,11 +320,13 @@ class QueryViewModel(
         else -> null
     }
 
-    private fun speciesLabel(taxon: Taxon?, taxonId: String): String {
+    private fun speciesLabel(
+        taxon: Taxon?,
+        taxonId: String,
+        namesMode: NamesPreferences.ScientificOrCommon,
+    ): String {
         if (taxon == null) return taxonId
-        val commonName = taxon.localizedCommonName()
-        val scientificName = TaxonUtils.getFullName(taxon) ?: taxon.getName() ?: taxonId
-        return if (commonName != null) "$commonName ($scientificName)" else scientificName
+        return taxon.formattedLabel(namesMode)
     }
 
     class Factory(

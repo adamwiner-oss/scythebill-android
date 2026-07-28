@@ -47,11 +47,13 @@ import com.scythebill.birdlist.android.cache.LoadState
 import com.scythebill.birdlist.android.ui.common.SightingIndicators
 import com.scythebill.birdlist.android.ui.common.ExpandableSection
 import com.scythebill.birdlist.android.ui.common.StaticSection
-import com.scythebill.birdlist.android.ui.common.localizedCommonName
+import com.scythebill.birdlist.android.ui.common.annotatedLabel
+import com.scythebill.birdlist.android.ui.common.namePartsFor
 import com.scythebill.birdlist.model.taxa.Species
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
 import com.scythebill.birdlist.model.taxa.Taxonomy
+import com.scythebill.birdlist.model.taxa.names.NamesPreferences
 
 @Composable
 fun TaxonomyBrowseScreen(
@@ -94,6 +96,7 @@ fun TaxonomyBrowseScreen(
                 navigateToSpecies,
                 onNavigationHandled,
                 selectedUserId,
+                namesState.scientificOrCommon,
             )
         }
     }
@@ -108,6 +111,7 @@ private fun TaxonomyBrowseContent(
     navigateToSpecies: Taxon?,
     onNavigationHandled: () -> Unit,
     selectedUserId: String?,
+    mode: NamesPreferences.ScientificOrCommon,
 ) {
     var stack by remember(taxonomy) { mutableStateOf(listOf(taxonomy.getRoot())) }
     val current = stack.last()
@@ -142,12 +146,15 @@ private fun TaxonomyBrowseContent(
     }
 
     val isSpecies = current.getType() == Taxon.Type.species
+    // The species detail page always shows both names — a "scientific/common
+    // name only" preference only trims the secondary name in list contexts.
+    val titleMode = if (isSpecies) detailMode(mode) else mode
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(combinedLabel(current))
+                    Text(combinedLabel(current, titleMode))
                 },
                 navigationIcon = {
                     if (stack.size > 1) {
@@ -160,7 +167,7 @@ private fun TaxonomyBrowseContent(
         }
     ) { padding ->
         if (isSpecies) {
-            SpeciesDetailContent(current, dao, selectedUserId, modifier = Modifier.padding(padding))
+            SpeciesDetailContent(current, titleMode, dao, selectedUserId, modifier = Modifier.padding(padding))
             return@Scaffold
         }
 
@@ -189,6 +196,7 @@ private fun TaxonomyBrowseContent(
                 items(children, key = { it.getId() ?: it.getName() ?: "" }) { child ->
                     TaxonRow(
                         child,
+                        mode,
                         sighted = isSighted(child, sightedTaxonIds),
                         onClick = {
                             if (child.getType() == Taxon.Type.species || child.getContents().isNotEmpty()) {
@@ -201,6 +209,18 @@ private fun TaxonomyBrowseContent(
         }
     }
 }
+
+/**
+ * The species detail page always shows both scientific and common names,
+ * so a "scientific only"/"common only" preference is treated as just
+ * choosing which name comes first.
+ */
+private fun detailMode(mode: NamesPreferences.ScientificOrCommon): NamesPreferences.ScientificOrCommon =
+    when (mode) {
+        NamesPreferences.ScientificOrCommon.SCIENTIFIC_ONLY -> NamesPreferences.ScientificOrCommon.SCIENTIFIC_FIRST
+        NamesPreferences.ScientificOrCommon.COMMON_ONLY -> NamesPreferences.ScientificOrCommon.COMMON_FIRST
+        else -> mode
+    }
 
 private fun ancestorChain(taxon: Taxon): List<Taxon> {
     val chain = mutableListOf(taxon)
@@ -221,23 +241,14 @@ internal enum class SpeciesLabelType {
 }
 
 /**
- * "Common name (*Scientific name*)", italicizing the scientific part.
+ * The taxon's name formatted per [mode], italicizing the scientific part.
  */
-internal fun combinedLabel(taxon: Taxon, speciesLabelType: SpeciesLabelType = SpeciesLabelType.None): AnnotatedString {
-    val commonName = taxon.localizedCommonName()
-    val scientificName = TaxonUtils.getFullName(taxon) ?: ""
-    fun build(): AnnotatedString = buildAnnotatedString {
-        if (commonName != null) {
-            append(commonName)
-            append(" (")
-        }
-        withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-            append(scientificName)
-        }
-        if (commonName != null) {
-            append(")")
-        }
-    }
+internal fun combinedLabel(
+    taxon: Taxon,
+    mode: NamesPreferences.ScientificOrCommon,
+    speciesLabelType: SpeciesLabelType = SpeciesLabelType.None,
+): AnnotatedString {
+    fun build(): AnnotatedString = taxon.annotatedLabel(mode)
     return when (speciesLabelType) {
         SpeciesLabelType.Italic -> {
             buildAnnotatedString {
@@ -271,6 +282,7 @@ private enum class SpeciesDetailSection { INFO, GROUPS, SIGHTINGS }
 @Composable
 private fun SpeciesDetailContent(
     taxon: Taxon,
+    mode: NamesPreferences.ScientificOrCommon,
     dao: CacheDao,
     selectedUserId: String?,
     modifier: Modifier = Modifier,
@@ -328,14 +340,14 @@ private fun SpeciesDetailContent(
                             state.groupsOrSubspecies.forEach { node ->
                                 when (node) {
                                     is GroupOrSubspeciesNode.Group -> {
-                                        TaxonWithRange(node.group)
+                                        TaxonWithRange(node.group, mode)
                                         Column(modifier = Modifier.padding(start = 24.dp)) {
                                             node.subspecies.forEach { subspecies ->
-                                                TaxonWithRange(subspecies)
+                                                TaxonWithRange(subspecies, mode)
                                             }
                                         }
                                     }
-                                    is GroupOrSubspeciesNode.Subspecies -> TaxonWithRange(node.taxon)
+                                    is GroupOrSubspeciesNode.Subspecies -> TaxonWithRange(node.taxon, mode)
                                 }
                             }
                         }
@@ -377,10 +389,10 @@ private fun SpeciesDetailContent(
 }
 
 @Composable
-private fun TaxonWithRange(taxon: Taxon, modifier: Modifier = Modifier) {
+private fun TaxonWithRange(taxon: Taxon, mode: NamesPreferences.ScientificOrCommon, modifier: Modifier = Modifier) {
     val range = (taxon as? Species)?.let { TaxonUtils.getRange(it) }
     Column(modifier = modifier.padding(vertical = 4.dp)) {
-        Text(combinedLabel(taxon))
+        Text(combinedLabel(taxon, mode))
         if (range != null) {
             Text(
                 range,
@@ -392,21 +404,24 @@ private fun TaxonWithRange(taxon: Taxon, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun TaxonRow(taxon: Taxon, sighted: Boolean, onClick: () -> Unit) {
+private fun TaxonRow(
+    taxon: Taxon,
+    mode: NamesPreferences.ScientificOrCommon,
+    sighted: Boolean,
+    onClick: () -> Unit,
+) {
     if (taxon.getType() == Taxon.Type.species) {
         ListItem(
-            headlineContent = { Text(combinedLabel(taxon,
+            headlineContent = { Text(combinedLabel(taxon, mode,
                 if (sighted) SpeciesLabelType.Medium else  SpeciesLabelType.Italic)) },
             modifier = Modifier.clickable(onClick = onClick)
         )
     } else {
-        val localizedName = taxon.localizedCommonName()
-        val primaryName = localizedName ?: TaxonUtils.getFullName(taxon) ?: ""
-        val secondaryName = if (localizedName == null) null else TaxonUtils.getFullName(taxon)
+        val parts = taxon.namePartsFor(mode)
         ListItem(
-            headlineContent = { Text(primaryName, fontWeight = FontWeight.Medium) },
-            supportingContent = if (secondaryName != null) {
-                { Text(secondaryName) }
+            headlineContent = { Text(parts.primary, fontWeight = FontWeight.Medium) },
+            supportingContent = if (parts.secondary != null) {
+                { Text(parts.secondary) }
             } else null,
             modifier = Modifier.clickable(onClick = onClick)
         )

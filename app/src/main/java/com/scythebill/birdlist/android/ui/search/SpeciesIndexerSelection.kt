@@ -1,8 +1,7 @@
 package com.scythebill.birdlist.android.ui.search
 
-import com.scythebill.birdlist.android.ui.common.localizedCommonName
+import com.scythebill.birdlist.android.ui.common.formattedLabel
 import com.scythebill.birdlist.model.taxa.Taxon
-import com.scythebill.birdlist.model.taxa.TaxonUtils
 import com.scythebill.birdlist.model.taxa.Taxonomy
 import com.scythebill.birdlist.model.taxa.names.NamesPreferences
 import com.scythebill.birdlist.model.util.Indexer
@@ -27,12 +26,6 @@ fun speciesIndexerGroups(
     }
 }
 
-/** "Common Name (Scientific name)", falling back to whatever name is available. */
-fun taxonSearchLabel(taxon: Taxon): String {
-    val scientific = TaxonUtils.getFullName(taxon) ?: taxon.getName()
-    val common = taxon.localizedCommonName()
-    return when {
-        common != null && scientific != null -> "$common ($scientific)"
-        else -> common ?: scientific ?: ""
-    }
-}
+/** The taxon's name formatted per [NamesPreferences.scientificOrCommon]. */
+fun taxonSearchLabel(taxon: Taxon, namesPreferences: NamesPreferences): String =
+    taxon.formattedLabel(namesPreferences.scientificOrCommon)

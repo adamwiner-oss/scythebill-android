@@ -78,7 +78,7 @@ class SpeciesSearchViewModel(
                 if (ids.size >= MAX_MATCHES) break
             }
             _rawMatches.value = ids.take(MAX_MATCHES).mapNotNull { id ->
-                taxonomy.getTaxon(id)?.let { taxon -> SpeciesMatch(taxon, taxonSearchLabel(taxon)) }
+                taxonomy.getTaxon(id)?.let { taxon -> SpeciesMatch(taxon, taxonSearchLabel(taxon, namesPreferences)) }
             }
         }
     }
