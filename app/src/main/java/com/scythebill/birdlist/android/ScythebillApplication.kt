@@ -3,6 +3,7 @@ package com.scythebill.birdlist.android
 import android.app.Application
 import com.scythebill.birdlist.android.data.ActiveTaxonomyStore
 import com.scythebill.birdlist.android.data.NamesPreferencesStore
+import com.scythebill.birdlist.android.data.UserFilterStore
 import com.scythebill.birdlist.android.di.AppContainer
 import com.scythebill.birdlist.model.taxa.Taxonomy
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +30,9 @@ class ScythebillApplication : Application() {
     lateinit var namesPreferencesStore: NamesPreferencesStore
         private set
 
+    lateinit var userFilterStore: UserFilterStore
+        private set
+
     lateinit var taxonomyDeferred: Deferred<Taxonomy>
         private set
 
@@ -39,6 +43,7 @@ class ScythebillApplication : Application() {
         // (see AppContainer's context-taking factory methods for the same
         // constraint).
         namesPreferencesStore = NamesPreferencesStore(this, applicationScope)
+        userFilterStore = UserFilterStore(container.userPreferencesStore(this))
         taxonomyDeferred = applicationScope.async {
             val taxonomy = container.loadTaxonomy(namesPreferencesStore.namesPreferences)
             container.buildSpeciesIndexes(taxonomy)

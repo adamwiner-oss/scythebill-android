@@ -57,6 +57,7 @@ import com.scythebill.birdlist.android.ui.search.SpeciesSearchBar
 import com.scythebill.birdlist.android.ui.search.SpeciesSearchViewModel
 import com.scythebill.birdlist.android.ui.taxonomy.TaxonomyBrowseScreen
 import com.scythebill.birdlist.android.ui.taxonomy.TaxonomyBrowseViewModel
+import com.scythebill.birdlist.android.ui.users.UserPreferencesScreen
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.Taxonomy
 import java.io.File
@@ -87,6 +88,7 @@ class MainActivity : ComponentActivity() {
             (application as ScythebillApplication).container.queryPreferencesStore(application),
             fileLoadViewModel.loadState,
             (application as ScythebillApplication).namesPreferencesStore.state,
+            (application as ScythebillApplication).userFilterStore,
         )
     }
 
@@ -120,18 +122,27 @@ class MainActivity : ComponentActivity() {
                         Box(modifier = Modifier.safeDrawingPadding()) {
                           var taxonomySwitching by remember { mutableStateOf(false) }
                           var localNamesPreferencesExpanded by remember { mutableStateOf(false) }
+                          var userPreferencesExpanded by remember { mutableStateOf(false) }
+                          // Hoisted above the preferences-screen branch below, rather than
+                          // remembered inside the Column: showing/hiding those screens
+                          // otherwise tears down and rebuilds that whole subtree, which would
+                          // reset the current tab/search/navigation state back to defaults.
+                          var tab by remember { mutableStateOf(MainTab.TAXONOMY) }
+                          var searchExpanded by remember { mutableStateOf(false) }
+                          var navigateToSpecies by remember { mutableStateOf<Taxon?>(null) }
+                          var scrollToTaxonId by remember { mutableStateOf<String?>(null) }
                           if (localNamesPreferencesExpanded) {
                               LocalNamesPreferencesScreen(
                                   store = (application as ScythebillApplication).namesPreferencesStore,
                                   onBack = { localNamesPreferencesExpanded = false },
                               )
+                          } else if (userPreferencesExpanded) {
+                              UserPreferencesScreen(
+                                  store = (application as ScythebillApplication).userFilterStore,
+                                  onBack = { userPreferencesExpanded = false },
+                              )
                           } else {
                           Column {
-                            var tab by remember { mutableStateOf(MainTab.TAXONOMY) }
-                            var searchExpanded by remember { mutableStateOf(false) }
-                            var navigateToSpecies by remember { mutableStateOf<Taxon?>(null) }
-                            var scrollToTaxonId by remember { mutableStateOf<String?>(null) }
-
                             val reportTaxonIds by queryViewModel.reportTaxonIds.collectAsState()
                             LaunchedEffect(tab, reportTaxonIds) {
                                 speciesSearchViewModel.setAllowedPredicate(
@@ -157,6 +168,8 @@ class MainActivity : ComponentActivity() {
                             val activeTaxonomy by activeTaxonomyStore.activeTaxonomy.collectAsState()
                             val extendedTaxonomyDescriptors by
                                 activeTaxonomyStore.extendedTaxonomyDescriptors.collectAsState()
+                            val availableUsers by
+                                (application as ScythebillApplication).userFilterStore.availableUsers.collectAsState()
                             var taxonomySelectionExpanded by remember { mutableStateOf(false) }
                             if (taxonomySelectionExpanded) {
                                 TaxonomySelectionDialog(
@@ -192,6 +205,8 @@ class MainActivity : ComponentActivity() {
                                     onPickFile = { openDocumentLauncher.launch(arrayOf("*/*")) },
                                     onEditReportPreferences = { reportPreferencesExpanded = true },
                                     onEditLocalNames = { localNamesPreferencesExpanded = true },
+                                    hasUsers = availableUsers.isNotEmpty(),
+                                    onEditUsers = { userPreferencesExpanded = true },
                                     hasExtendedTaxonomies = extendedTaxonomyDescriptors.isNotEmpty(),
                                     onSelectTaxonomy = { taxonomySelectionExpanded = true },
                                     searchExpanded = searchExpanded,
@@ -220,6 +235,7 @@ class MainActivity : ComponentActivity() {
                                 MainTab.TAXONOMY -> TaxonomyBrowseScreen(
                                     taxonomyViewModel,
                                     (application as ScythebillApplication).container.cacheDao(application),
+                                    loadState = loadState,
                                     navigateToSpecies = navigateToSpecies,
                                     onNavigationHandled = { navigateToSpecies = null },
                                 )
@@ -358,6 +374,8 @@ private fun AppTopBar(
     onPickFile: () -> Unit,
     onEditReportPreferences: () -> Unit,
     onEditLocalNames: () -> Unit,
+    hasUsers: Boolean,
+    onEditUsers: () -> Unit,
     hasExtendedTaxonomies: Boolean,
     onSelectTaxonomy: () -> Unit,
     searchExpanded: Boolean,
@@ -395,6 +413,15 @@ private fun AppTopBar(
                         onEditLocalNames()
                     },
                 )
+                if (hasUsers) {
+                    DropdownMenuItem(
+                        text = { Text("Observer preferences") },
+                        onClick = {
+                            menuExpanded = false
+                            onEditUsers()
+                        },
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text("Change .bsxm file") },
                     onClick = {

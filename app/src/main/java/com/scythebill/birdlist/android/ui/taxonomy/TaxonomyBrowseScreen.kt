@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.scythebill.birdlist.android.ScythebillApplication
 import com.scythebill.birdlist.android.cache.CacheDao
+import com.scythebill.birdlist.android.cache.LoadState
 import com.scythebill.birdlist.android.ui.common.SightingIndicators
 import com.scythebill.birdlist.android.ui.common.ExpandableSection
 import com.scythebill.birdlist.android.ui.common.StaticSection
@@ -56,6 +57,7 @@ import com.scythebill.birdlist.model.taxa.Taxonomy
 fun TaxonomyBrowseScreen(
     viewModel: TaxonomyBrowseViewModel,
     dao: CacheDao,
+    loadState: LoadState,
     navigateToSpecies: Taxon? = null,
     onNavigationHandled: () -> Unit = {},
 ) {
@@ -66,6 +68,8 @@ fun TaxonomyBrowseScreen(
     // whole subtree to rebuild when it changes.
     val namesState by (context.applicationContext as ScythebillApplication)
         .namesPreferencesStore.state.collectAsState()
+    val selectedUserId by (context.applicationContext as ScythebillApplication)
+        .userFilterStore.selectedUserId.collectAsState()
 
     when (val state = viewModel.uiState) {
         is TaxonomyBrowseUiState.Loading -> Box(
@@ -86,8 +90,10 @@ fun TaxonomyBrowseScreen(
             TaxonomyBrowseContent(
                 state.taxonomy,
                 dao,
+                loadState,
                 navigateToSpecies,
                 onNavigationHandled,
+                selectedUserId,
             )
         }
     }
@@ -98,15 +104,21 @@ fun TaxonomyBrowseScreen(
 private fun TaxonomyBrowseContent(
     taxonomy: Taxonomy,
     dao: CacheDao,
+    loadState: LoadState,
     navigateToSpecies: Taxon?,
     onNavigationHandled: () -> Unit,
+    selectedUserId: String?,
 ) {
     var stack by remember(taxonomy) { mutableStateOf(listOf(taxonomy.getRoot())) }
     val current = stack.last()
 
-    var sightedTaxonIds by remember(taxonomy) { mutableStateOf<Set<String>>(emptySet()) }
-    LaunchedEffect(taxonomy) {
-        sightedTaxonIds = dao.getSightedTaxonIds(taxonomy.getId()).toSet()
+    // Keyed on loadState (not just taxonomy) since the taxonomy object is
+    // reused across file loads when the taxonomy version is unchanged —
+    // without this, sighted-species indicators would keep showing the
+    // previously loaded file's data.
+    var sightedTaxonIds by remember(taxonomy, loadState, selectedUserId) { mutableStateOf<Set<String>>(emptySet()) }
+    LaunchedEffect(taxonomy, loadState, selectedUserId) {
+        sightedTaxonIds = dao.getSightedTaxonIds(taxonomy.getId(), selectedUserId).toSet()
     }
 
     // Scroll position for each browse level (keyed by taxon id), so that
@@ -148,7 +160,7 @@ private fun TaxonomyBrowseContent(
         }
     ) { padding ->
         if (isSpecies) {
-            SpeciesDetailContent(current, dao, modifier = Modifier.padding(padding))
+            SpeciesDetailContent(current, dao, selectedUserId, modifier = Modifier.padding(padding))
             return@Scaffold
         }
 
@@ -257,14 +269,20 @@ private fun isSighted(taxon: Taxon, sightedTaxonIds: Set<String>): Boolean {
 private enum class SpeciesDetailSection { INFO, GROUPS, SIGHTINGS }
 
 @Composable
-private fun SpeciesDetailContent(taxon: Taxon, dao: CacheDao, modifier: Modifier = Modifier) {
+private fun SpeciesDetailContent(
+    taxon: Taxon,
+    dao: CacheDao,
+    selectedUserId: String?,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     val viewModel: SpeciesDetailViewModel = viewModel(
-        key = taxon.getId(),
+        key = taxon.getId().toString() + selectedUserId,
         factory = SpeciesDetailViewModel.Factory(
             taxon,
             dao,
             (context.applicationContext as ScythebillApplication).container.queryPreferencesStore(context),
+            selectedUserId,
         ),
     )
     var expandedSection: SpeciesDetailSection? by remember(taxon.getId()) {

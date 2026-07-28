@@ -103,6 +103,13 @@ data class SightingDetailsEntity(
 )
 data class SightingTaxonEntity(val sightingId: Long, val taxonId: String)
 
+@Entity(
+    tableName = "sighting_users",
+    primaryKeys = ["sightingId", "userId"],
+    indices = [Index(value = ["userId", "sightingId"])],
+)
+data class SightingUserEntity(val sightingId: Long, val userId: String)
+
 @Entity(tableName = "cache_metadata")
 data class CacheMetadataEntity(
     @PrimaryKey val id: Int = 0,
@@ -120,6 +127,14 @@ data class CacheMetadataEntity(
      * [encodeExtendedTaxonomyDescriptors]/[decodeExtendedTaxonomyDescriptors].
      */
     val extendedTaxonomyNamesJson: String? = null,
+
+    /**
+     * Encoded [com.scythebill.birdlist.android.data.UserDescriptor] list for the source `.bsxm`'s
+     * `UserSet` (null if it has none), so a cache-hit relaunch can know whether the "User
+     * preferences" menu entry should be shown without re-parsing the file. See
+     * [encodeUserDescriptors]/[decodeUserDescriptors].
+     */
+    val userNamesJson: String? = null,
 )
 
 /**
@@ -128,7 +143,7 @@ data class CacheMetadataEntity(
  * hasn't changed (e.g. a new column needs populating, or a bug in how existing
  * columns were populated is fixed).
  */
-const val CACHE_FORMAT_VERSION = 5
+const val CACHE_FORMAT_VERSION = 6
 
 /** Row shape produced by [CacheDao.queryResults]'s dynamically-built SQL. */
 data class QueryResultRow(

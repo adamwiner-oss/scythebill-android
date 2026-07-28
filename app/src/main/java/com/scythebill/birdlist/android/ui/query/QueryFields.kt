@@ -73,3 +73,13 @@ data class PhotographedFieldState(
         return "s.photographed = ?" to listOf(if (hasPhoto) 1 else 0)
     }
 }
+
+/**
+ * Not a query-builder row like the fields above: this comes from the sticky, app-wide
+ * "User preferences" selection ([com.scythebill.birdlist.android.data.UserFilterStore]), and
+ * applies to every query rather than being toggled per-query. `null` means "All users".
+ */
+fun userFilterClause(selectedUserId: String?): Pair<String, List<Any>>? {
+    if (selectedUserId == null) return null
+    return "s.id IN (SELECT sightingId FROM sighting_users WHERE userId = ?)" to listOf(selectedUserId)
+}

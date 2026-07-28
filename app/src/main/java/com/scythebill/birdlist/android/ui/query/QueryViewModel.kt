@@ -17,6 +17,7 @@ import com.scythebill.birdlist.android.cache.decodePhotoUris
 import com.scythebill.birdlist.android.data.ActiveTaxonomyStore
 import com.scythebill.birdlist.android.data.NamesPreferencesState
 import com.scythebill.birdlist.android.data.QueryPreferencesStore
+import com.scythebill.birdlist.android.data.UserFilterStore
 import com.scythebill.birdlist.android.ui.common.formatDate
 import com.scythebill.birdlist.android.ui.common.localizedCommonName
 import com.scythebill.birdlist.android.ui.search.addSyntheticLocationsToIndex
@@ -33,6 +34,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -77,6 +79,7 @@ private data class QueryInputs(
     val photographed: PhotographedFieldState,
     val queryPreferences: QueryPreferences,
     val taxonomy: Taxonomy,
+    val selectedUserId: String?,
 )
 
 @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -88,6 +91,7 @@ class QueryViewModel(
     namesState: Flow<NamesPreferencesState> = flowOf(
         NamesPreferencesState("en", com.scythebill.birdlist.model.taxa.names.NamesPreferences.ScientificOrCommon.COMMON_FIRST)
     ),
+    private val userFilterStore: UserFilterStore? = null,
 ) : ViewModel() {
 
     private val queryPreferencesFlow: Flow<QueryPreferences> =
@@ -98,6 +102,8 @@ class QueryViewModel(
     // in just forces results (and their labels) to be recomputed whenever
     // the locale or naming-mode preference changes.
     private val namesStateFlow: Flow<NamesPreferencesState> = namesState
+
+    private val selectedUserIdFlow: Flow<String?> = userFilterStore?.selectedUserId ?: flowOf(null)
 
     private val locationField = MutableStateFlow(LocationFieldState())
     private val dateField = MutableStateFlow(DateFieldState())
@@ -172,12 +178,25 @@ class QueryViewModel(
         }
             .combine(activeTaxonomyStore.activeTaxonomy.filterNotNull()) { (fields, queryPreferences), taxonomy ->
                 val (location, date, photographed) = fields
-                QueryInputs(location, date, photographed, queryPreferences, taxonomy)
+                QueryInputs(location, date, photographed, queryPreferences, taxonomy, selectedUserId = null)
             }
             .combine(namesStateFlow) { inputs, _ -> inputs }
+            .combine(selectedUserIdFlow) { inputs, selectedUserId -> inputs.copy(selectedUserId = selectedUserId) }
+            // Re-run on every (re-)load, not just when a field/taxonomy/etc.
+            // changes — activeTaxonomy stays the same object across file
+            // loads when the taxonomy version is unchanged, so without this
+            // the query would keep showing results from the previous file.
+            .combine(loadState.filter { it == LoadState.Ready }) { inputs, _ -> inputs }
             .debounce(250)
             .mapLatest { inputs ->
-                runQuery(inputs.location, inputs.date, inputs.photographed, inputs.queryPreferences, inputs.taxonomy)
+                runQuery(
+                    inputs.location,
+                    inputs.date,
+                    inputs.photographed,
+                    inputs.queryPreferences,
+                    inputs.taxonomy,
+                    inputs.selectedUserId,
+                )
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), QueryResultsUiState.Loading)
 
@@ -192,11 +211,17 @@ class QueryViewModel(
         photographed: PhotographedFieldState,
         queryPreferences: QueryPreferences,
         taxonomy: Taxonomy,
+        selectedUserId: String?,
     ): QueryResultsUiState = withContext(Dispatchers.IO) {
         try {
             val baseTaxonomyId = TaxonUtils.getBaseTaxonomy(taxonomy)!!.getId()
 
-            val clauses = listOfNotNull(location.clause(), date.clause(), photographed.clause())
+            val clauses = listOfNotNull(
+                location.clause(),
+                date.clause(),
+                photographed.clause(),
+                userFilterClause(selectedUserId),
+            )
             val whereSql = if (clauses.isEmpty()) "1=1" else clauses.joinToString(" AND ") { it.first }
             val args = listOf<Any>(baseTaxonomyId) + clauses.flatMap { it.second }
             val sql = """
@@ -303,10 +328,18 @@ class QueryViewModel(
         private val queryPreferencesStore: QueryPreferencesStore,
         private val loadState: Flow<LoadState>,
         private val namesState: Flow<NamesPreferencesState>,
+        private val userFilterStore: UserFilterStore,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return QueryViewModel(dao, activeTaxonomyStore, queryPreferencesStore, loadState, namesState) as T
+            return QueryViewModel(
+                dao,
+                activeTaxonomyStore,
+                queryPreferencesStore,
+                loadState,
+                namesState,
+                userFilterStore,
+            ) as T
         }
     }
 }

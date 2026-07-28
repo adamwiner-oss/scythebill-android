@@ -8,7 +8,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.scythebill.birdlist.android.ScythebillApplication
 import com.scythebill.birdlist.android.data.PickedFilePreferences
+import com.scythebill.birdlist.android.data.UserDescriptor
 import com.scythebill.birdlist.model.taxa.Taxonomy
+import com.scythebill.birdlist.model.user.User
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
@@ -98,6 +100,9 @@ class FileLoadViewModel(
             application.activeTaxonomyStore.setKnownExtendedTaxonomyDescriptors(
                 decodeExtendedTaxonomyDescriptors(existingMetadata?.extendedTaxonomyNamesJson)
             )
+            application.userFilterStore.setAvailableUsers(
+                decodeUserDescriptors(existingMetadata?.userNamesJson)
+            )
             _loadState.value = LoadState.Ready
             return
         }
@@ -122,6 +127,12 @@ class FileLoadViewModel(
                 )
                 application.activeTaxonomyStore.setExtendedTaxonomies(
                     result.reportSet.extendedTaxonomies().toList()
+                )
+                application.userFilterStore.setAvailableUsers(
+                    result.reportSet.getUserSet()?.allUsers()
+                        ?.sortedWith(User.comparator())
+                        ?.map { UserDescriptor(it.id(), it.name() ?: it.abbreviation() ?: it.id()) }
+                        ?: emptyList()
                 )
                 _loadState.value = LoadState.Ready
             }

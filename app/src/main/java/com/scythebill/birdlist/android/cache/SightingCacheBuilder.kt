@@ -134,6 +134,7 @@ class SightingCacheBuilder(private val dao: CacheDao) {
 
         val detailEntities = mutableListOf<SightingDetailsEntity>()
         val taxonRows = mutableListOf<SightingTaxonEntity>()
+        val userRows = mutableListOf<SightingUserEntity>()
         prepared.forEachIndexed { idx, p ->
             val id = ids[idx]
             val info = p.sighting.sightingInfo
@@ -145,9 +146,11 @@ class SightingCacheBuilder(private val dao: CacheDao) {
                 )
             }
             p.sighting.taxon.ids.forEach { taxonId -> taxonRows += SightingTaxonEntity(id, taxonId) }
+            info?.users?.forEach { user -> userRows += SightingUserEntity(id, user.id()) }
         }
         dao.insertSightingDetails(detailEntities)
         dao.insertSightingTaxa(taxonRows)
+        dao.insertSightingUsers(userRows)
 
         dao.setMetadata(
             CacheMetadataEntity(
@@ -158,6 +161,7 @@ class SightingCacheBuilder(private val dao: CacheDao) {
                 builtAtEpochMillis = System.currentTimeMillis(),
                 cacheFormatVersion = CACHE_FORMAT_VERSION,
                 extendedTaxonomyNamesJson = encodeExtendedTaxonomyDescriptors(reportSet.extendedTaxonomies()),
+                userNamesJson = encodeUserDescriptors(reportSet.getUserSet()),
             )
         )
     }

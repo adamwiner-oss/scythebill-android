@@ -15,9 +15,10 @@ import androidx.room.RoomDatabase
         SightingEntity::class,
         SightingDetailsEntity::class,
         SightingTaxonEntity::class,
+        SightingUserEntity::class,
         CacheMetadataEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 abstract class ScythebillDatabase : RoomDatabase() {

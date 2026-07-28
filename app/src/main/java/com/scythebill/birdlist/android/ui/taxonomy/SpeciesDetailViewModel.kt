@@ -14,6 +14,7 @@ import com.scythebill.birdlist.android.data.QueryPreferencesStore
 import com.scythebill.birdlist.android.ui.common.formatDate
 import com.scythebill.birdlist.android.ui.query.QueryPreferences
 import com.scythebill.birdlist.android.ui.query.ResultRow
+import com.scythebill.birdlist.android.ui.query.userFilterClause
 import com.scythebill.birdlist.model.sighting.SightingInfo
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
@@ -70,6 +71,7 @@ class SpeciesDetailViewModel(
     private val taxon: Taxon,
     private val dao: CacheDao,
     private val queryPreferencesStore: QueryPreferencesStore? = null,
+    private val selectedUserId: String? = null,
 ) : ViewModel() {
 
     var uiState: SpeciesDetailUiState by mutableStateOf(SpeciesDetailUiState.Loading)
@@ -106,6 +108,8 @@ class SpeciesDetailViewModel(
                 val taxonomyId = taxon.getTaxonomy()?.getId()
                 val placeholders = taxonIds.joinToString(",") { "?" }
                 val taxonomyClause = if (taxonomyId != null) "AND s.taxonomyId = ?" else ""
+                val userFilter = userFilterClause(selectedUserId)
+                val userClause = if (userFilter != null) "AND ${userFilter.first}" else ""
                 val sql = """
                     SELECT s.id AS sightingId, s.locationId, s.epochDay, s.datePrecision,
                            s.photographed, s.heardOnly, s.sightingStatus, sd.photoUrisJson, st.taxonId,
@@ -113,10 +117,10 @@ class SpeciesDetailViewModel(
                     FROM sightings s
                     JOIN sighting_taxa st ON st.sightingId = s.id
                     LEFT JOIN sighting_details sd ON sd.sightingId = s.id
-                    WHERE st.taxonId IN ($placeholders) $taxonomyClause
+                    WHERE st.taxonId IN ($placeholders) $taxonomyClause $userClause
                     ORDER BY s.epochDay DESC
                 """.trimIndent()
-                val args: Array<Any> = (taxonIds + listOfNotNull(taxonomyId)).toTypedArray()
+                val args: Array<Any> = (taxonIds + listOfNotNull(taxonomyId) + (userFilter?.second ?: emptyList())).toTypedArray()
                 val rows = dao.queryResults(SimpleSQLiteQuery(sql, args))
                 val locationNames = buildLocationDisplayNames(dao.getAllLocations())
                 rows
@@ -162,10 +166,11 @@ class SpeciesDetailViewModel(
         private val taxon: Taxon,
         private val dao: CacheDao,
         private val queryPreferencesStore: QueryPreferencesStore,
+        private val selectedUserId: String? = null,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return SpeciesDetailViewModel(taxon, dao, queryPreferencesStore) as T
+            return SpeciesDetailViewModel(taxon, dao, queryPreferencesStore, selectedUserId) as T
         }
     }
 }

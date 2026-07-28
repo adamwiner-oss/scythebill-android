@@ -34,6 +34,9 @@ interface CacheDao {
     @Insert
     suspend fun insertSightingTaxa(rows: List<SightingTaxonEntity>)
 
+    @Insert
+    suspend fun insertSightingUsers(rows: List<SightingUserEntity>)
+
     @Query("SELECT * FROM cache_metadata WHERE id = 0")
     suspend fun getMetadata(): CacheMetadataEntity?
 
@@ -43,6 +46,9 @@ interface CacheDao {
     @Query("DELETE FROM sighting_taxa")
     suspend fun clearSightingTaxa()
 
+    @Query("DELETE FROM sighting_users")
+    suspend fun clearSightingUsers()
+
     @Query("SELECT DISTINCT taxonId FROM sighting_taxa")
     suspend fun getSightedTaxonIds(): List<String>
 
@@ -51,9 +57,10 @@ interface CacheDao {
         SELECT DISTINCT st.taxonId FROM sighting_taxa st
         JOIN sightings s ON s.id = st.sightingId
         WHERE s.taxonomyId = :taxonomyId
+        AND (:userId IS NULL OR s.id IN (SELECT sightingId FROM sighting_users WHERE userId = :userId))
         """
     )
-    suspend fun getSightedTaxonIds(taxonomyId: String): List<String>
+    suspend fun getSightedTaxonIds(taxonomyId: String, userId: String?): List<String>
 
     @Query("DELETE FROM sighting_details")
     suspend fun clearSightingDetails()
@@ -79,6 +86,7 @@ interface CacheDao {
     @Transaction
     suspend fun clearAll() {
         clearSightingTaxa()
+        clearSightingUsers()
         clearSightingDetails()
         clearSightings()
         clearLocationAncestors()
