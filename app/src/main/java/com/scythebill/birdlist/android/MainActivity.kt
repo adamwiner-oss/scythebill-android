@@ -49,6 +49,7 @@ import androidx.lifecycle.lifecycleScope
 import com.scythebill.birdlist.android.cache.FileLoadViewModel
 import com.scythebill.birdlist.android.data.ExtendedTaxonomyDescriptor
 import com.scythebill.birdlist.android.cache.LoadState
+import com.scythebill.birdlist.android.ui.names.LocalNamesPreferencesScreen
 import com.scythebill.birdlist.android.ui.query.QueryPreferencesDialog
 import com.scythebill.birdlist.android.ui.query.QueryScreen
 import com.scythebill.birdlist.android.ui.query.QueryViewModel
@@ -70,7 +71,8 @@ class MainActivity : ComponentActivity() {
 
     private val speciesSearchViewModel: SpeciesSearchViewModel by viewModels {
         SpeciesSearchViewModel.Factory(
-            (application as ScythebillApplication).activeTaxonomyStore
+            (application as ScythebillApplication).activeTaxonomyStore,
+            (application as ScythebillApplication).namesPreferencesStore.namesPreferences,
         )
     }
 
@@ -84,6 +86,7 @@ class MainActivity : ComponentActivity() {
             (application as ScythebillApplication).activeTaxonomyStore,
             (application as ScythebillApplication).container.queryPreferencesStore(application),
             fileLoadViewModel.loadState,
+            (application as ScythebillApplication).namesPreferencesStore.state,
         )
     }
 
@@ -116,6 +119,13 @@ class MainActivity : ComponentActivity() {
                     } else {
                         Box(modifier = Modifier.safeDrawingPadding()) {
                           var taxonomySwitching by remember { mutableStateOf(false) }
+                          var localNamesPreferencesExpanded by remember { mutableStateOf(false) }
+                          if (localNamesPreferencesExpanded) {
+                              LocalNamesPreferencesScreen(
+                                  store = (application as ScythebillApplication).namesPreferencesStore,
+                                  onBack = { localNamesPreferencesExpanded = false },
+                              )
+                          } else {
                           Column {
                             var tab by remember { mutableStateOf(MainTab.TAXONOMY) }
                             var searchExpanded by remember { mutableStateOf(false) }
@@ -181,6 +191,7 @@ class MainActivity : ComponentActivity() {
                                 AppTopBar(
                                     onPickFile = { openDocumentLauncher.launch(arrayOf("*/*")) },
                                     onEditReportPreferences = { reportPreferencesExpanded = true },
+                                    onEditLocalNames = { localNamesPreferencesExpanded = true },
                                     hasExtendedTaxonomies = extendedTaxonomyDescriptors.isNotEmpty(),
                                     onSelectTaxonomy = { taxonomySelectionExpanded = true },
                                     searchExpanded = searchExpanded,
@@ -218,6 +229,7 @@ class MainActivity : ComponentActivity() {
                                     onScrollHandled = { scrollToTaxonId = null },
                                 )
                             }
+                          }
                           }
                           if (taxonomySwitching ||
                               loadState is LoadState.Loading ||
@@ -345,6 +357,7 @@ private fun LoadFileBar(
 private fun AppTopBar(
     onPickFile: () -> Unit,
     onEditReportPreferences: () -> Unit,
+    onEditLocalNames: () -> Unit,
     hasExtendedTaxonomies: Boolean,
     onSelectTaxonomy: () -> Unit,
     searchExpanded: Boolean,
@@ -373,6 +386,13 @@ private fun AppTopBar(
                     onClick = {
                         menuExpanded = false
                         onEditReportPreferences()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("Name preferences") },
+                    onClick = {
+                        menuExpanded = false
+                        onEditLocalNames()
                     },
                 )
                 DropdownMenuItem(

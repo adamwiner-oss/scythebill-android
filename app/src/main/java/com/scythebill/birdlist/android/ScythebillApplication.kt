@@ -2,6 +2,7 @@ package com.scythebill.birdlist.android
 
 import android.app.Application
 import com.scythebill.birdlist.android.data.ActiveTaxonomyStore
+import com.scythebill.birdlist.android.data.NamesPreferencesStore
 import com.scythebill.birdlist.android.di.AppContainer
 import com.scythebill.birdlist.model.taxa.Taxonomy
 import kotlinx.coroutines.CoroutineScope
@@ -25,13 +26,21 @@ class ScythebillApplication : Application() {
     val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val activeTaxonomyStore = ActiveTaxonomyStore(container)
 
+    lateinit var namesPreferencesStore: NamesPreferencesStore
+        private set
+
     lateinit var taxonomyDeferred: Deferred<Taxonomy>
         private set
 
     override fun onCreate() {
         super.onCreate()
+        // Constructed here rather than as a field initializer: it needs a
+        // valid base Context, which isn't attached yet during field init
+        // (see AppContainer's context-taking factory methods for the same
+        // constraint).
+        namesPreferencesStore = NamesPreferencesStore(this, applicationScope)
         taxonomyDeferred = applicationScope.async {
-            val taxonomy = container.loadTaxonomy()
+            val taxonomy = container.loadTaxonomy(namesPreferencesStore.namesPreferences)
             container.buildSpeciesIndexes(taxonomy)
             activeTaxonomyStore.setBaseTaxonomy(taxonomy)
             taxonomy

@@ -1,5 +1,6 @@
 package com.scythebill.birdlist.android.ui.search
 
+import com.scythebill.birdlist.android.ui.common.localizedCommonName
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
 import com.scythebill.birdlist.model.taxa.Taxonomy
@@ -29,7 +30,7 @@ fun speciesIndexerGroups(
 /** "Common Name (Scientific name)", falling back to whatever name is available. */
 fun taxonSearchLabel(taxon: Taxon): String {
     val scientific = TaxonUtils.getFullName(taxon) ?: taxon.getName()
-    val common = taxon.getCommonName()
+    val common = taxon.localizedCommonName()
     return when {
         common != null && scientific != null -> "$common ($scientific)"
         else -> common ?: scientific ?: ""

@@ -33,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.scythebill.birdlist.android.ui.common.SightingIndicators
+import com.scythebill.birdlist.android.ui.common.localizedCommonName
 
 @Composable
 fun QueryResultsScreen(
@@ -116,7 +117,7 @@ fun QueryResultsScreen(
 
 @Composable
 private fun SpeciesHeader(group: SpeciesGroup, expanded: Boolean, onToggle: () -> Unit) {
-    val commonName = group.taxon?.getCommonName()
+    val commonName = group.taxon?.localizedCommonName()
     val scientificName = group.taxon?.let {
         com.scythebill.birdlist.model.taxa.TaxonUtils.getFullName(it)
     } ?: group.label

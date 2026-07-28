@@ -91,10 +91,11 @@ class SpeciesSearchViewModel(
 
     class Factory(
         private val activeTaxonomyStore: ActiveTaxonomyStore,
+        private val namesPreferences: NamesPreferences,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return SpeciesSearchViewModel(activeTaxonomyStore) as T
+            return SpeciesSearchViewModel(activeTaxonomyStore, namesPreferences) as T
         }
     }
 

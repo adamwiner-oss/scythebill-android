@@ -9,8 +9,12 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.MoreExecutors
 import com.scythebill.birdlist.model.taxa.IocUpgradeLoader
 import com.scythebill.birdlist.model.taxa.Taxonomy
+import com.scythebill.birdlist.model.taxa.TaxonomyImpl
 import com.scythebill.birdlist.model.taxa.TaxonomyMappingLoader
 import com.scythebill.birdlist.model.taxa.TaxonomyMappings
+import com.scythebill.birdlist.model.taxa.names.LocalNames
+import com.scythebill.birdlist.model.taxa.names.NamesLoaders
+import com.scythebill.birdlist.model.taxa.names.NamesPreferences
 import com.scythebill.birdlist.model.util.TaxonomyIndexer
 import com.scythebill.birdlist.model.xml.XmlTaxonImport
 import java.io.InputStreamReader
@@ -53,13 +57,23 @@ class AppContainer {
      * `app/docs/ioc-extended-taxonomy-avoidance.md` for why
      * `importMappedTaxa` must never be called here.
      */
-    suspend fun loadTaxonomy(): Taxonomy = withContext(Dispatchers.IO) {
+    suspend fun loadTaxonomy(namesPreferences: NamesPreferences): Taxonomy = withContext(Dispatchers.IO) {
         val stream = Taxonomy::class.java.getResourceAsStream("/taxon.xml")
             ?: error("taxon.xml not found on classpath")
-        InputStreamReader(stream, Charsets.UTF_8).use { reader ->
+        val taxonomy = InputStreamReader(stream, Charsets.UTF_8).use { reader ->
             XmlTaxonImport().importTaxa(reader)
                 ?: error("importTaxa returned null")
         }
+        // Bundled as classpath resources (via :model's resources, per the
+        // taxon.xml precedent above) rather than Android assets, so the
+        // same NamesLoaders.fromUrls classloader lookup desktop uses works
+        // unchanged.
+        (taxonomy as TaxonomyImpl).localNames = LocalNames(
+            NamesLoaders.fromUrls("multilingual/clements-names-%s.csv"),
+            namesPreferences,
+            NamesPreferences.LocaleOption.CLEMENTS,
+        )
+        taxonomy
     }
 
     /**

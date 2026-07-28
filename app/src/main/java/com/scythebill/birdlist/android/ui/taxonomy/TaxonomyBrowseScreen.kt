@@ -24,7 +24,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,6 +46,7 @@ import com.scythebill.birdlist.android.cache.CacheDao
 import com.scythebill.birdlist.android.ui.common.SightingIndicators
 import com.scythebill.birdlist.android.ui.common.ExpandableSection
 import com.scythebill.birdlist.android.ui.common.StaticSection
+import com.scythebill.birdlist.android.ui.common.localizedCommonName
 import com.scythebill.birdlist.model.taxa.Species
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
@@ -56,6 +59,14 @@ fun TaxonomyBrowseScreen(
     navigateToSpecies: Taxon? = null,
     onNavigationHandled: () -> Unit = {},
 ) {
+    val context = LocalContext.current
+    // Names are read straight off the shared Taxon/Taxonomy objects rather
+    // than passed as Compose state, so a locale/naming-mode change on its
+    // own wouldn't normally trigger recomposition here — `key` forces the
+    // whole subtree to rebuild when it changes.
+    val namesState by (context.applicationContext as ScythebillApplication)
+        .namesPreferencesStore.state.collectAsState()
+
     when (val state = viewModel.uiState) {
         is TaxonomyBrowseUiState.Loading -> Box(
             modifier = Modifier.fillMaxSize(),
@@ -71,12 +82,14 @@ fun TaxonomyBrowseScreen(
             Text("Failed to load taxonomy: ${state.message}")
         }
 
-        is TaxonomyBrowseUiState.Loaded -> TaxonomyBrowseContent(
-            state.taxonomy,
-            dao,
-            navigateToSpecies,
-            onNavigationHandled,
-        )
+        is TaxonomyBrowseUiState.Loaded -> key(namesState) {
+            TaxonomyBrowseContent(
+                state.taxonomy,
+                dao,
+                navigateToSpecies,
+                onNavigationHandled,
+            )
+        }
     }
 }
 
@@ -199,7 +212,7 @@ internal enum class SpeciesLabelType {
  * "Common name (*Scientific name*)", italicizing the scientific part.
  */
 internal fun combinedLabel(taxon: Taxon, speciesLabelType: SpeciesLabelType = SpeciesLabelType.None): AnnotatedString {
-    val commonName = taxon.getCommonName()
+    val commonName = taxon.localizedCommonName()
     val scientificName = TaxonUtils.getFullName(taxon) ?: ""
     fun build(): AnnotatedString = buildAnnotatedString {
         if (commonName != null) {
@@ -369,8 +382,9 @@ private fun TaxonRow(taxon: Taxon, sighted: Boolean, onClick: () -> Unit) {
             modifier = Modifier.clickable(onClick = onClick)
         )
     } else {
-        val primaryName = taxon.getCommonName() ?: TaxonUtils.getFullName(taxon) ?: ""
-        val secondaryName = if (taxon.getCommonName() == null) null else TaxonUtils.getFullName(taxon)
+        val localizedName = taxon.localizedCommonName()
+        val primaryName = localizedName ?: TaxonUtils.getFullName(taxon) ?: ""
+        val secondaryName = if (localizedName == null) null else TaxonUtils.getFullName(taxon)
         ListItem(
             headlineContent = { Text(primaryName, fontWeight = FontWeight.Medium) },
             supportingContent = if (secondaryName != null) {
