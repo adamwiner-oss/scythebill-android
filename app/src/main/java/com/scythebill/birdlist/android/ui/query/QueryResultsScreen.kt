@@ -181,7 +181,15 @@ private fun SpeciesHeader(
 private fun ResultRowItem(row: ResultRow) {
     ListItem(
         headlineContent = { Text(row.locationName) },
-        supportingContent = { Text(row.dateLabel) },
+        supportingContent = {
+            Text(
+                if (row.subspeciesLabel != null) {
+                    "${row.dateLabel} · ${row.subspeciesLabel}"
+                } else {
+                    row.dateLabel
+                },
+            )
+        },
         trailingContent = if (row.heardOnly || row.introduced || row.photographed || row.ambiguousBadge != null || !row.countable || row.bvd) {
             {
                 Row(verticalAlignment = Alignment.CenterVertically) {

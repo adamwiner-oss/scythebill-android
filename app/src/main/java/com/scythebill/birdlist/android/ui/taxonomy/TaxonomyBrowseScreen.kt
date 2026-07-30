@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -375,8 +376,19 @@ private fun SpeciesDetailContent(
                                             },
                                         )
                                     },
-                                    trailingContent = if (row.heardOnly || row.introduced || row.photographed || !row.countable || row.bvd) {
-                                        { SightingIndicators(row) }
+                                    trailingContent = if (row.heardOnly || row.introduced || row.photographed || row.ambiguousBadge != null || !row.countable || row.bvd) {
+                                        {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                if (row.ambiguousBadge != null) {
+                                                    Text(
+                                                        "(${row.ambiguousBadge})",
+                                                        modifier = Modifier.padding(end = 4.dp),
+                                                        fontStyle = FontStyle.Italic,
+                                                    )
+                                                }
+                                                SightingIndicators(row)
+                                            }
+                                        }
                                     } else null,
                                 )
                             }

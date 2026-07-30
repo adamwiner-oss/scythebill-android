@@ -283,6 +283,11 @@ class QueryViewModel(
                                     ),
                                     photoUrls = decodePhotoUris(row.photoUrisJson)
                                         .filter { it.startsWith("http://") || it.startsWith("https://") },
+                                    subspeciesLabel = if (!ambiguous && row.taxonId != taxon?.getId()) {
+                                        taxonomy.getTaxon(row.taxonId)?.getName()
+                                    } else {
+                                        null
+                                    },
                                     ambiguousBadge = ambiguousBadgeFor(row.raisedTaxonType),
                                 )
                             },
