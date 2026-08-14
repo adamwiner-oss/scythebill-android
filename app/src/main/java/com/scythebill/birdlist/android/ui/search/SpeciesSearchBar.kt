@@ -13,9 +13,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import com.scythebill.birdlist.model.taxa.Taxon
 
@@ -36,13 +40,20 @@ fun SpeciesSearchBar(
 ) {
     val query by viewModel.query.collectAsState()
     val matches by viewModel.matches.collectAsState()
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
 
     Column(modifier = modifier) {
         OutlinedTextField(
             value = query,
             onValueChange = viewModel::onQueryChanged,
             label = { Text("Search species") },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester),
         )
         if (matches.isNotEmpty()) {
             Surface(

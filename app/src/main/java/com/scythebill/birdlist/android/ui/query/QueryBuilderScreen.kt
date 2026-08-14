@@ -22,11 +22,14 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
@@ -110,6 +113,10 @@ private fun LocationFieldRow(state: LocationFieldRowState) {
         }
         if (enabled) {
             Column {
+                val focusRequester = remember { FocusRequester() }
+                LaunchedEffect(Unit) {
+                    focusRequester.requestFocus()
+                }
                 OutlinedTextField(
                     value = query,
                     onValueChange = {
@@ -121,6 +128,7 @@ private fun LocationFieldRow(state: LocationFieldRowState) {
                     label = { Text("Search locations") },
                     modifier = Modifier
                         .fillMaxWidth()
+                        .focusRequester(focusRequester)
                         .onFocusChanged { focusState ->
                             if (focusState.isFocused) {
                                 query = query.copy(selection = TextRange(0, query.text.length))
