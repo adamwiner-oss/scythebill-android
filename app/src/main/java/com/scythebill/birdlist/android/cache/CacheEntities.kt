@@ -145,6 +145,14 @@ data class CacheMetadataEntity(
  */
 const val CACHE_FORMAT_VERSION = 6
 
+/** Row shape produced by [CacheDao.getSightingCountabilityRows]. */
+data class SightingCountabilityRow(
+    val taxonId: String,
+    val sightingStatus: String?,
+    val heardOnly: Boolean,
+    val raisedTaxonType: String,
+)
+
 /** Row shape produced by [CacheDao.queryResults]'s dynamically-built SQL. */
 data class QueryResultRow(
     val sightingId: Long,

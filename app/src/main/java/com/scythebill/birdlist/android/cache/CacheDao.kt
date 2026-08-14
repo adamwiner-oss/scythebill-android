@@ -62,6 +62,18 @@ interface CacheDao {
     )
     suspend fun getSightedTaxonIds(taxonomyId: String, userId: String?): List<String>
 
+    @Query(
+        """
+        SELECT st.taxonId AS taxonId, s.sightingStatus AS sightingStatus, s.heardOnly AS heardOnly,
+               s.raisedTaxonType AS raisedTaxonType
+        FROM sighting_taxa st
+        JOIN sightings s ON s.id = st.sightingId
+        WHERE s.taxonomyId = :taxonomyId
+        AND (:userId IS NULL OR s.id IN (SELECT sightingId FROM sighting_users WHERE userId = :userId))
+        """
+    )
+    suspend fun getSightingCountabilityRows(taxonomyId: String, userId: String?): List<SightingCountabilityRow>
+
     @Query("DELETE FROM sighting_details")
     suspend fun clearSightingDetails()
 

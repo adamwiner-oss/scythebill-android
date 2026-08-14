@@ -50,11 +50,13 @@ import com.scythebill.birdlist.android.ui.common.ExpandableSection
 import com.scythebill.birdlist.android.ui.common.StaticSection
 import com.scythebill.birdlist.android.ui.common.annotatedLabel
 import com.scythebill.birdlist.android.ui.common.namePartsFor
+import com.scythebill.birdlist.android.ui.query.QueryPreferences
 import com.scythebill.birdlist.model.taxa.Species
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
 import com.scythebill.birdlist.model.taxa.Taxonomy
 import com.scythebill.birdlist.model.taxa.names.NamesPreferences
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun TaxonomyBrowseScreen(
@@ -114,6 +116,7 @@ private fun TaxonomyBrowseContent(
     selectedUserId: String?,
     mode: NamesPreferences.ScientificOrCommon,
 ) {
+    val context = LocalContext.current
     var stack by remember(taxonomy) { mutableStateOf(listOf(taxonomy.getRoot())) }
     val current = stack.last()
 
@@ -122,8 +125,22 @@ private fun TaxonomyBrowseContent(
     // without this, sighted-species indicators would keep showing the
     // previously loaded file's data.
     var sightedTaxonIds by remember(taxonomy, loadState, selectedUserId) { mutableStateOf<Set<String>>(emptySet()) }
+    var countableSightedTaxonIds by remember(taxonomy, loadState, selectedUserId) { mutableStateOf<Set<String>>(emptySet()) }
     LaunchedEffect(taxonomy, loadState, selectedUserId) {
         sightedTaxonIds = dao.getSightedTaxonIds(taxonomy.getId(), selectedUserId).toSet()
+
+        val queryPreferences = (context.applicationContext as ScythebillApplication)
+            .container.queryPreferencesStore(context).preferencesFlow.first()
+        countableSightedTaxonIds = dao.getSightingCountabilityRows(taxonomy.getId(), selectedUserId)
+            .filter { row ->
+                row.raisedTaxonType == "SINGLE" && queryPreferences.isCountable(
+                    sightingStatus = row.sightingStatus,
+                    heardOnly = row.heardOnly,
+                    taxon = taxonomy.getTaxon(row.taxonId),
+                )
+            }
+            .map { it.taxonId }
+            .toSet()
     }
 
     // Scroll position for each browse level (keyed by taxon id), so that
@@ -151,11 +168,36 @@ private fun TaxonomyBrowseContent(
     // name only" preference only trims the secondary name in list contexts.
     val titleMode = if (isSpecies) detailMode(mode) else mode
 
+    // A family's genera are skipped in the browse hierarchy — jump
+    // straight from family to all of its species.
+    val children = if (current.getType() == Taxon.Type.family) {
+        TaxonUtils.getDescendantsOfType(current, Taxon.Type.species)
+    } else {
+        current.getContents()
+    }
+
+    // For a family, show how many of its species have a countable sighting,
+    // e.g. "(10/21)".
+    val familyCounts: Pair<Int, Int>? = if (current.getType() == Taxon.Type.family) {
+        children.count { isSighted(it, countableSightedTaxonIds) } to children.size
+    } else {
+        null
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(combinedLabel(current, titleMode))
+                    Text(
+                        if (familyCounts != null) {
+                            buildAnnotatedString {
+                                append(combinedLabel(current, titleMode))
+                                append(" (${familyCounts.first}/${familyCounts.second})")
+                            }
+                        } else {
+                            combinedLabel(current, titleMode)
+                        }
+                    )
                 },
                 navigationIcon = {
                     if (stack.size > 1) {
@@ -170,14 +212,6 @@ private fun TaxonomyBrowseContent(
         if (isSpecies) {
             SpeciesDetailContent(current, titleMode, dao, selectedUserId, modifier = Modifier.padding(padding))
             return@Scaffold
-        }
-
-        // A family's genera are skipped in the browse hierarchy — jump
-        // straight from family to all of its species.
-        val children = if (current.getType() == Taxon.Type.family) {
-            TaxonUtils.getDescendantsOfType(current, Taxon.Type.species)
-        } else {
-            current.getContents()
         }
 
         val listStateKey = current.getId() ?: current.getName() ?: "root"
