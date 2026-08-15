@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.stream.Collectors
 
 data class SpeciesMatch(val taxon: Taxon, val label: String)
 
@@ -67,18 +66,29 @@ class SpeciesSearchViewModel(
             delay(DEBOUNCE_MILLIS)
             val taxonomy = activeTaxonomyStore.activeTaxonomy.value ?: return@launch
             val ids = LinkedHashSet<String>()
-            for (indexer in speciesIndexerGroups(taxonomy, namesPreferences)) {
-                // At least for now, only show species (the taxonomy indexers index
-                // everything) - the user can see the groups/subspecies
-                val found = indexer.find(text)
-                ids.addAll(found.stream().filter { id ->
-                    taxonomy.getTaxon(id)?.getType() == Taxon.Type.species
-                }.collect(Collectors.toList()))
+            val alternateNameById = mutableMapOf<String, String>()
+            // At least for now, only show species (the taxonomy indexers index
+            // everything) - the user can see the groups/subspecies
+            fun isSpecies(id: String) = taxonomy.getTaxon(id)?.getType() == Taxon.Type.species
+            for (step in speciesIndexerSearchSteps(taxonomy, namesPreferences)) {
+                when (step) {
+                    is SpeciesIndexerStep.Names ->
+                        ids.addAll(step.indexer.find(text).filter(::isSpecies))
+                    is SpeciesIndexerStep.AlternateNames ->
+                        for (alternate in step.indexer.find(text)) {
+                            val id = alternate.getObject()
+                            if (isSpecies(id) && ids.add(id)) {
+                                alternateNameById[id] = alternate.getName()
+                            }
+                        }
+                }
 
                 if (ids.size >= MAX_MATCHES) break
             }
             _rawMatches.value = ids.take(MAX_MATCHES).mapNotNull { id ->
-                taxonomy.getTaxon(id)?.let { taxon -> SpeciesMatch(taxon, taxonSearchLabel(taxon, namesPreferences)) }
+                taxonomy.getTaxon(id)?.let { taxon ->
+                    SpeciesMatch(taxon, taxonSearchLabel(taxon, namesPreferences, alternateNameById[id]))
+                }
             }
         }
     }
