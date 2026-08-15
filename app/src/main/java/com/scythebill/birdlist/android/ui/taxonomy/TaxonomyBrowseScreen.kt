@@ -30,7 +30,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
@@ -117,7 +120,19 @@ private fun TaxonomyBrowseContent(
     mode: NamesPreferences.ScientificOrCommon,
 ) {
     val context = LocalContext.current
-    var stack by remember(taxonomy) { mutableStateOf(listOf(taxonomy.getRoot())) }
+    // Saved as taxon ids (Taxon itself isn't Parcelable/Serializable) so the
+    // browse position survives rotation instead of resetting to the root.
+    val stackSaver = remember(taxonomy) {
+        Saver<List<Taxon>, List<String>>(
+            save = { list -> list.mapNotNull { it.getId() } },
+            restore = { ids ->
+                ids.mapNotNull { taxonomy.getTaxon(it) }.ifEmpty { listOf(taxonomy.getRoot()) }
+            },
+        )
+    }
+    var stack by rememberSaveable(taxonomy, stateSaver = stackSaver) {
+        mutableStateOf(listOf(taxonomy.getRoot()))
+    }
     val current = stack.last()
 
     // Keyed on loadState (not just taxonomy) since the taxonomy object is
@@ -144,7 +159,19 @@ private fun TaxonomyBrowseContent(
     }
 
     // Scroll position for each browse level (keyed by taxon id), so that
-    // navigating back to a family restores where the user left off.
+    // navigating back to a family restores where the user left off. The
+    // LazyListState instances themselves aren't saveable across process
+    // recreation (e.g. rotation), so the raw index/offset pairs are mirrored
+    // into rememberSaveable state and used to seed each LazyListState.
+    val scrollPositionsSaver = remember {
+        Saver<Map<String, Pair<Int, Int>>, Map<String, List<Int>>>(
+            save = { positions -> positions.mapValues { (_, v) -> listOf(v.first, v.second) } },
+            restore = { saved -> saved.mapValues { (_, v) -> v[0] to v[1] } },
+        )
+    }
+    var scrollPositions by rememberSaveable(stateSaver = scrollPositionsSaver) {
+        mutableStateOf(emptyMap<String, Pair<Int, Int>>())
+    }
     val listStates = remember { mutableMapOf<String, LazyListState>() }
 
     // Set when a species is opened without having browsed there (e.g. from
@@ -215,7 +242,15 @@ private fun TaxonomyBrowseContent(
         }
 
         val listStateKey = current.getId() ?: current.getName() ?: "root"
-        val listState = listStates.getOrPut(listStateKey) { LazyListState() }
+        val listState = listStates.getOrPut(listStateKey) {
+            val (index, offset) = scrollPositions[listStateKey] ?: (0 to 0)
+            LazyListState(firstVisibleItemIndex = index, firstVisibleItemScrollOffset = offset)
+        }
+
+        LaunchedEffect(listStateKey) {
+            snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+                .collect { position -> scrollPositions = scrollPositions + (listStateKey to position) }
+        }
 
         LaunchedEffect(current, pendingScrollTargetId) {
             val targetId = pendingScrollTargetId ?: return@LaunchedEffect

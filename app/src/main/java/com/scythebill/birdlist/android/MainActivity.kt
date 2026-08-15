@@ -39,6 +39,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -127,7 +128,7 @@ class MainActivity : ComponentActivity() {
                           // remembered inside the Column: showing/hiding those screens
                           // otherwise tears down and rebuilds that whole subtree, which would
                           // reset the current tab/search/navigation state back to defaults.
-                          var tab by remember { mutableStateOf(MainTab.TAXONOMY) }
+                          var tab by rememberSaveable { mutableStateOf(MainTab.TAXONOMY) }
                           var searchExpanded by remember { mutableStateOf(false) }
                           var navigateToSpecies by remember { mutableStateOf<Taxon?>(null) }
                           var scrollToTaxonId by remember { mutableStateOf<String?>(null) }
