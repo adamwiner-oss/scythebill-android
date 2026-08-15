@@ -19,6 +19,7 @@ import com.scythebill.birdlist.android.data.NamesPreferencesState
 import com.scythebill.birdlist.android.data.QueryPreferencesStore
 import com.scythebill.birdlist.android.data.UserFilterStore
 import com.scythebill.birdlist.android.ui.common.formatDate
+import com.scythebill.birdlist.android.ui.common.formatDateRange
 import com.scythebill.birdlist.android.ui.common.formattedLabel
 import com.scythebill.birdlist.android.ui.search.addSyntheticLocationsToIndex
 import com.scythebill.birdlist.android.ui.search.buildLocationIndexer
@@ -232,10 +233,12 @@ class QueryViewModel(
             val sql = """
                 SELECT s.id AS sightingId, s.locationId, s.epochDay, s.datePrecision,
                        s.photographed, s.heardOnly, s.sightingStatus, sd.photoUrisJson, st.taxonId,
-                       s.raisedTaxonType, s.raisedGroupKey, s.raisedDisplayName
+                       s.raisedTaxonType, s.raisedGroupKey, s.raisedDisplayName, t.displayName AS tripDisplayName,
+                       t.startEpochDay AS tripStartEpochDay, t.endEpochDay AS tripEndEpochDay
                 FROM sightings s
                 JOIN sighting_taxa st ON st.sightingId = s.id
                 LEFT JOIN sighting_details sd ON sd.sightingId = s.id
+                LEFT JOIN trips t ON t.id = s.tripId
                 WHERE s.taxonomyId = ? AND $whereSql
                 ORDER BY s.epochDay DESC
             """.trimIndent()
@@ -270,8 +273,13 @@ class QueryViewModel(
                             .map { row ->
                                 ResultRow(
                                     sightingId = row.sightingId,
-                                    locationName = locationNames[row.locationId ?: ""] ?: row.locationId ?: "",
-                                    dateLabel = formatDate(row.epochDay, row.datePrecision),
+                                    locationName = row.tripDisplayName
+                                        ?: locationNames[row.locationId ?: ""] ?: row.locationId ?: "",
+                                    dateLabel = if (row.tripDisplayName != null) {
+                                        formatDateRange(row.tripStartEpochDay, row.tripEndEpochDay)
+                                    } else {
+                                        formatDate(row.epochDay, row.datePrecision)
+                                    },
                                     photographed = row.photographed,
                                     heardOnly = row.heardOnly,
                                     introduced = row.sightingStatus == SightingInfo.SightingStatus.INTRODUCED.name,

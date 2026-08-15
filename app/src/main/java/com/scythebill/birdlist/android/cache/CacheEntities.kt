@@ -53,6 +53,8 @@ data class TripEntity(
     val locationId: String?,
     val startEpochDay: Long,
     val endEpochDay: Long,
+    /** Precomputed [com.scythebill.birdlist.model.sighting.Trips.nameWithDate]. */
+    val displayName: String,
 )
 
 @Entity(
@@ -143,7 +145,7 @@ data class CacheMetadataEntity(
  * hasn't changed (e.g. a new column needs populating, or a bug in how existing
  * columns were populated is fixed).
  */
-const val CACHE_FORMAT_VERSION = 6
+const val CACHE_FORMAT_VERSION = 7
 
 /** Row shape produced by [CacheDao.getSightingCountabilityRows]. */
 data class SightingCountabilityRow(
@@ -167,4 +169,7 @@ data class QueryResultRow(
     val raisedTaxonType: String,
     val raisedGroupKey: String?,
     val raisedDisplayName: String?,
+    val tripDisplayName: String?,
+    val tripStartEpochDay: Long?,
+    val tripEndEpochDay: Long?,
 )
