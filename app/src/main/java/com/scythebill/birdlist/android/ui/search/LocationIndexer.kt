@@ -17,16 +17,66 @@ private val ALTERNATE_INDEX_ENTRIES: ImmutableMultimap<String, String> =
         .put("Saint", "St")
         .build()
 
+/** Coarse kind of a location, used to order results within an index tier. */
+enum class LocationKind {
+    REGION,
+    COUNTRY,
+    SYNTHETIC,
+    OTHER,
+}
+
 /**
- * Builds a typeahead [Indexer] over [locations], keyed by location id —
- * ported from desktop's `LocationIdToString.addToLocationIndex()`. Indexes
- * each location's display and model names, plus the combo of each with its
- * parent's names, so a search like "Springfield Illinois" narrows to the
- * right one among same-named locations.
+ * A typeahead index over locations, built as an ordered series of [Indexer]
+ * tiers of increasing complexity. [find] queries every tier and appends
+ * their results in tier order, so a query is led by matches from the
+ * simplest strategy - e.g. "US" leads with "United States" matching by its
+ * own name, ahead of a later tier that would also match "Uruguay" via its
+ * parent's name ("Uruguay South America"). Within a tier, results are
+ * sorted by [LocationKind] - regions first, then countries, then synthetic
+ * locations, then everything else.
  */
-fun buildLocationIndexer(locations: List<LocationEntity>): Indexer<String> {
-    val index = Indexer<String>()
-    index.setAlternateIndexEntries(ALTERNATE_INDEX_ENTRIES)
+class LocationIndexer {
+    private val simple = indexer()
+    private val withParent = indexer()
+    private val tiers = listOf(simple, withParent)
+    private val kindById = HashMap<String, LocationKind>()
+
+    private fun indexer() = Indexer<String>().apply { setAlternateIndexEntries(ALTERNATE_INDEX_ENTRIES) }
+
+    fun find(query: String): Collection<String> {
+        val results = LinkedHashSet<String>()
+        for (tier in tiers) {
+            results.addAll(tier.find(query).sortedBy { kindOf(it).ordinal })
+        }
+        return results
+    }
+
+    private fun kindOf(id: String) = kindById[id] ?: LocationKind.OTHER
+
+    /** Indexes [name] under the simplest tier - a location's own name(s). */
+    fun addSimple(name: String, id: String, kind: LocationKind = LocationKind.OTHER) {
+        simple.add(name, id)
+        kindById[id] = kind
+    }
+
+    /** Indexes [name] under a more complex tier - e.g. a name combined with its parent's. */
+    fun addWithParent(name: String, id: String, kind: LocationKind = LocationKind.OTHER) {
+        withParent.add(name, id)
+        kindById[id] = kind
+    }
+}
+
+/**
+ * Builds a typeahead [LocationIndexer] over [locations], keyed by location
+ * id - ported from desktop's `LocationIdToString.addToLocationIndex()`.
+ * Indexes each location's display and model names in the simple tier, plus
+ * the combo of each with its parent's names in a fallback tier, so a search
+ * like "Springfield Illinois" narrows to the right one among same-named
+ * locations without a plain query like "US" also matching unrelated places
+ * whose parent's name happens to share initials.
+ */
+fun buildLocationIndexer(locations: List<LocationEntity>): LocationIndexer {
+    val index = LocationIndexer()
     val byId = locations.associateBy { it.id }
     for (loc in locations) {
         addToLocationIndex(index, loc, byId)
@@ -36,32 +86,39 @@ fun buildLocationIndexer(locations: List<LocationEntity>): Indexer<String> {
 
 /** Adds [syntheticLocations] (e.g. "ABA Region") to an existing location [index], keyed by id. */
 fun addSyntheticLocationsToIndex(
-    index: Indexer<String>,
+    index: LocationIndexer,
     syntheticLocations: List<SyntheticLocationEntity>,
 ) {
     for (loc in syntheticLocations) {
-        index.add(loc.displayName, loc.id)
+        index.addSimple(loc.displayName, loc.id, LocationKind.SYNTHETIC)
     }
 }
 
+private fun kindOf(loc: LocationEntity): LocationKind = when (loc.type) {
+    "region" -> LocationKind.REGION
+    "country" -> LocationKind.COUNTRY
+    else -> LocationKind.OTHER
+}
+
 private fun addToLocationIndex(
-    index: Indexer<String>,
+    index: LocationIndexer,
     loc: LocationEntity,
     byId: Map<String, LocationEntity>,
 ) {
-    index.add(loc.displayName, loc.id)
+    val kind = kindOf(loc)
+    index.addSimple(loc.displayName, loc.id, kind)
     val sameDisplayName = loc.displayName == loc.name
     if (!sameDisplayName) {
-        index.add(loc.name, loc.id)
+        index.addSimple(loc.name, loc.id, kind)
     }
 
     val parent = loc.parentId?.let { byId[it] }
     if (parent != null) {
-        index.add("${loc.displayName} ${parent.displayName}", loc.id)
+        index.addWithParent("${loc.displayName} ${parent.displayName}", loc.id, kind)
         if (parent.displayName != parent.name) {
-            index.add("${loc.displayName} ${parent.name}", loc.id)
+            index.addWithParent("${loc.displayName} ${parent.name}", loc.id, kind)
             if (!sameDisplayName) {
-                index.add("${loc.name} ${parent.name}", loc.id)
+                index.addWithParent("${loc.name} ${parent.name}", loc.id, kind)
             }
         }
     }

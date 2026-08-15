@@ -142,7 +142,7 @@ private fun LocationFieldRow(state: LocationFieldRowState) {
                         .mapNotNull { id ->
                             state.viewModel.locationDisplayNames[id]?.let { SelectedLocation(id, it) }
                         }
-                        .take(20)
+                        .take(50)
                 }
                 if (expanded && matches.isNotEmpty()) {
                     Surface(

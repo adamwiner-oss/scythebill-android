@@ -21,6 +21,7 @@ import com.scythebill.birdlist.android.data.UserFilterStore
 import com.scythebill.birdlist.android.ui.common.formatDate
 import com.scythebill.birdlist.android.ui.common.formatDateRange
 import com.scythebill.birdlist.android.ui.common.formattedLabel
+import com.scythebill.birdlist.android.ui.search.LocationIndexer
 import com.scythebill.birdlist.android.ui.search.addSyntheticLocationsToIndex
 import com.scythebill.birdlist.android.ui.search.buildLocationIndexer
 import com.scythebill.birdlist.model.sighting.SightingInfo
@@ -28,7 +29,6 @@ import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
 import com.scythebill.birdlist.model.taxa.Taxonomy
 import com.scythebill.birdlist.model.taxa.names.NamesPreferences
-import com.scythebill.birdlist.model.util.Indexer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -132,7 +132,7 @@ class QueryViewModel(
     var locationDisplayNames: Map<String, String> by mutableStateOf(emptyMap())
         private set
 
-    var locationIndexer: Indexer<String> by mutableStateOf(Indexer())
+    var locationIndexer: LocationIndexer by mutableStateOf(LocationIndexer())
         private set
 
     init {
