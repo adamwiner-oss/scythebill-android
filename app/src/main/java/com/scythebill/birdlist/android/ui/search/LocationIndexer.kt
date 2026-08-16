@@ -111,15 +111,4 @@ private fun addToLocationIndex(
     if (!sameDisplayName) {
         index.addSimple(loc.name, loc.id, kind)
     }
-
-    val parent = loc.parentId?.let { byId[it] }
-    if (parent != null) {
-        index.addWithParent("${loc.displayName} ${parent.displayName}", loc.id, kind)
-        if (parent.displayName != parent.name) {
-            index.addWithParent("${loc.displayName} ${parent.name}", loc.id, kind)
-            if (!sameDisplayName) {
-                index.addWithParent("${loc.name} ${parent.name}", loc.id, kind)
-            }
-        }
-    }
 }
