@@ -124,25 +124,14 @@ class MainActivity : ComponentActivity() {
                           var taxonomySwitching by remember { mutableStateOf(false) }
                           var localNamesPreferencesExpanded by remember { mutableStateOf(false) }
                           var userPreferencesExpanded by remember { mutableStateOf(false) }
-                          // Hoisted above the preferences-screen branch below, rather than
-                          // remembered inside the Column: showing/hiding those screens
-                          // otherwise tears down and rebuilds that whole subtree, which would
-                          // reset the current tab/search/navigation state back to defaults.
+                          // Hoisted above the preferences-screen overlays below, rather than
+                          // remembered inside the Column: the Column stays composed the whole
+                          // time (preferences screens are drawn on top of it, not in place of
+                          // it), but hoisting here keeps this state stable regardless.
                           var tab by rememberSaveable { mutableStateOf(MainTab.TAXONOMY) }
                           var searchExpanded by remember { mutableStateOf(false) }
                           var navigateToSpecies by remember { mutableStateOf<Taxon?>(null) }
                           var scrollToTaxonId by remember { mutableStateOf<String?>(null) }
-                          if (localNamesPreferencesExpanded) {
-                              LocalNamesPreferencesScreen(
-                                  store = (application as ScythebillApplication).namesPreferencesStore,
-                                  onBack = { localNamesPreferencesExpanded = false },
-                              )
-                          } else if (userPreferencesExpanded) {
-                              UserPreferencesScreen(
-                                  store = (application as ScythebillApplication).userFilterStore,
-                                  onBack = { userPreferencesExpanded = false },
-                              )
-                          } else {
                           Column {
                             val reportTaxonIds by queryViewModel.reportTaxonIds.collectAsState()
                             LaunchedEffect(tab, reportTaxonIds) {
@@ -247,6 +236,17 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                           }
+                          if (localNamesPreferencesExpanded) {
+                              LocalNamesPreferencesScreen(
+                                  store = (application as ScythebillApplication).namesPreferencesStore,
+                                  onBack = { localNamesPreferencesExpanded = false },
+                              )
+                          }
+                          if (userPreferencesExpanded) {
+                              UserPreferencesScreen(
+                                  store = (application as ScythebillApplication).userFilterStore,
+                                  onBack = { userPreferencesExpanded = false },
+                              )
                           }
                           if (taxonomySwitching ||
                               loadState is LoadState.Loading ||

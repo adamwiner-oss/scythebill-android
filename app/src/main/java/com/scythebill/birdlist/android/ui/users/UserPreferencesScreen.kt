@@ -1,5 +1,6 @@
 package com.scythebill.birdlist.android.ui.users
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +37,7 @@ fun UserPreferencesScreen(
     val availableUsers by store.availableUsers.collectAsState()
     val selectedUserId by store.selectedUserId.collectAsState()
     val scope = rememberCoroutineScope()
+    BackHandler(onBack = onBack)
 
     Scaffold(
         topBar = {

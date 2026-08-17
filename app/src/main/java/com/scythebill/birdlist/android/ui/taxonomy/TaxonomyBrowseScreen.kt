@@ -94,16 +94,72 @@ fun TaxonomyBrowseScreen(
             Text("Failed to load taxonomy: ${state.message}")
         }
 
-        is TaxonomyBrowseUiState.Loaded -> key(namesState) {
-            TaxonomyBrowseContent(
-                state.taxonomy,
-                dao,
-                loadState,
-                navigateToSpecies,
-                onNavigationHandled,
-                selectedUserId,
-                namesState.scientificOrCommon,
-            )
+        is TaxonomyBrowseUiState.Loaded -> {
+            val taxonomy = state.taxonomy
+            // Saved as taxon ids (Taxon itself isn't Parcelable/Serializable) so the
+            // browse position survives rotation instead of resetting to the root.
+            // Hoisted above the `key(namesState)` below so a name-preference change
+            // (which forces that subtree to be recreated) doesn't reset it too.
+            val stackSaver = remember(taxonomy) {
+                Saver<List<Taxon>, List<String>>(
+                    save = { list -> list.mapNotNull { it.getId() } },
+                    restore = { ids ->
+                        ids.mapNotNull { taxonomy.getTaxon(it) }.ifEmpty { listOf(taxonomy.getRoot()) }
+                    },
+                )
+            }
+            var stack by rememberSaveable(taxonomy, stateSaver = stackSaver) {
+                mutableStateOf(listOf(taxonomy.getRoot()))
+            }
+
+            // Scroll position for each browse level (keyed by taxon id), so that
+            // navigating back to a family restores where the user left off. The
+            // LazyListState instances themselves aren't saveable across process
+            // recreation (e.g. rotation), so the raw index/offset pairs are mirrored
+            // into rememberSaveable state and used to seed each LazyListState.
+            val scrollPositionsSaver = remember {
+                Saver<Map<String, Pair<Int, Int>>, Map<String, List<Int>>>(
+                    save = { positions -> positions.mapValues { (_, v) -> listOf(v.first, v.second) } },
+                    restore = { saved -> saved.mapValues { (_, v) -> v[0] to v[1] } },
+                )
+            }
+            var scrollPositions by rememberSaveable(stateSaver = scrollPositionsSaver) {
+                mutableStateOf(emptyMap<String, Pair<Int, Int>>())
+            }
+            val listStates = remember { mutableMapOf<String, LazyListState>() }
+
+            // Set when a species is opened without having browsed there (e.g. from
+            // search), so the family screen can scroll it into view once shown.
+            var pendingScrollTargetId by remember { mutableStateOf<String?>(null) }
+
+            BackHandler(enabled = stack.size > 1) {
+                stack = stack.dropLast(1)
+            }
+
+            LaunchedEffect(navigateToSpecies) {
+                navigateToSpecies?.let { species ->
+                    stack = ancestorChain(species)
+                    pendingScrollTargetId = species.getId()
+                    onNavigationHandled()
+                }
+            }
+
+            key(namesState) {
+                TaxonomyBrowseContent(
+                    taxonomy,
+                    dao,
+                    loadState,
+                    selectedUserId,
+                    namesState.scientificOrCommon,
+                    stack = stack,
+                    onStackChange = { stack = it },
+                    scrollPositions = scrollPositions,
+                    onScrollPositionsChange = { scrollPositions = it },
+                    listStates = listStates,
+                    pendingScrollTargetId = pendingScrollTargetId,
+                    onPendingScrollTargetIdChange = { pendingScrollTargetId = it },
+                )
+            }
         }
     }
 }
@@ -114,25 +170,17 @@ private fun TaxonomyBrowseContent(
     taxonomy: Taxonomy,
     dao: CacheDao,
     loadState: LoadState,
-    navigateToSpecies: Taxon?,
-    onNavigationHandled: () -> Unit,
     selectedUserId: String?,
     mode: NamesPreferences.ScientificOrCommon,
+    stack: List<Taxon>,
+    onStackChange: (List<Taxon>) -> Unit,
+    scrollPositions: Map<String, Pair<Int, Int>>,
+    onScrollPositionsChange: (Map<String, Pair<Int, Int>>) -> Unit,
+    listStates: MutableMap<String, LazyListState>,
+    pendingScrollTargetId: String?,
+    onPendingScrollTargetIdChange: (String?) -> Unit,
 ) {
     val context = LocalContext.current
-    // Saved as taxon ids (Taxon itself isn't Parcelable/Serializable) so the
-    // browse position survives rotation instead of resetting to the root.
-    val stackSaver = remember(taxonomy) {
-        Saver<List<Taxon>, List<String>>(
-            save = { list -> list.mapNotNull { it.getId() } },
-            restore = { ids ->
-                ids.mapNotNull { taxonomy.getTaxon(it) }.ifEmpty { listOf(taxonomy.getRoot()) }
-            },
-        )
-    }
-    var stack by rememberSaveable(taxonomy, stateSaver = stackSaver) {
-        mutableStateOf(listOf(taxonomy.getRoot()))
-    }
     val current = stack.last()
 
     // Keyed on loadState (not just taxonomy) since the taxonomy object is
@@ -156,38 +204,6 @@ private fun TaxonomyBrowseContent(
             }
             .map { it.taxonId }
             .toSet()
-    }
-
-    // Scroll position for each browse level (keyed by taxon id), so that
-    // navigating back to a family restores where the user left off. The
-    // LazyListState instances themselves aren't saveable across process
-    // recreation (e.g. rotation), so the raw index/offset pairs are mirrored
-    // into rememberSaveable state and used to seed each LazyListState.
-    val scrollPositionsSaver = remember {
-        Saver<Map<String, Pair<Int, Int>>, Map<String, List<Int>>>(
-            save = { positions -> positions.mapValues { (_, v) -> listOf(v.first, v.second) } },
-            restore = { saved -> saved.mapValues { (_, v) -> v[0] to v[1] } },
-        )
-    }
-    var scrollPositions by rememberSaveable(stateSaver = scrollPositionsSaver) {
-        mutableStateOf(emptyMap<String, Pair<Int, Int>>())
-    }
-    val listStates = remember { mutableMapOf<String, LazyListState>() }
-
-    // Set when a species is opened without having browsed there (e.g. from
-    // search), so the family screen can scroll it into view once shown.
-    var pendingScrollTargetId by remember { mutableStateOf<String?>(null) }
-
-    BackHandler(enabled = stack.size > 1) {
-        stack = stack.dropLast(1)
-    }
-
-    LaunchedEffect(navigateToSpecies) {
-        navigateToSpecies?.let { species ->
-            stack = ancestorChain(species)
-            pendingScrollTargetId = species.getId()
-            onNavigationHandled()
-        }
     }
 
     val isSpecies = current.getType() == Taxon.Type.species
@@ -228,7 +244,7 @@ private fun TaxonomyBrowseContent(
                 },
                 navigationIcon = {
                     if (stack.size > 1) {
-                        IconButton(onClick = { stack = stack.dropLast(1) }) {
+                        IconButton(onClick = { onStackChange(stack.dropLast(1)) }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     }
@@ -249,7 +265,7 @@ private fun TaxonomyBrowseContent(
 
         LaunchedEffect(listStateKey) {
             snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
-                .collect { position -> scrollPositions = scrollPositions + (listStateKey to position) }
+                .collect { position -> onScrollPositionsChange(scrollPositions + (listStateKey to position)) }
         }
 
         LaunchedEffect(current, pendingScrollTargetId) {
@@ -258,7 +274,7 @@ private fun TaxonomyBrowseContent(
             if (index >= 0) {
                 listState.animateScrollToItem(index)
             }
-            pendingScrollTargetId = null
+            onPendingScrollTargetIdChange(null)
         }
 
         Column(modifier = Modifier.padding(padding)) {
@@ -270,7 +286,7 @@ private fun TaxonomyBrowseContent(
                         sighted = isSighted(child, sightedTaxonIds),
                         onClick = {
                             if (child.getType() == Taxon.Type.species || child.getContents().isNotEmpty()) {
-                                stack = stack + child
+                                onStackChange(stack + child)
                             }
                         },
                     )
