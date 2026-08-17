@@ -2,13 +2,22 @@ package com.scythebill.birdlist.android.ui.query
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -18,6 +27,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -35,10 +45,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -198,12 +210,16 @@ private fun DateFieldRow(viewModel: QueryViewModel) {
     var mode by remember { mutableStateOf(initial.mode) }
     var from by remember { mutableStateOf(initial.from) }
     var to by remember { mutableStateOf(initial.to) }
+    var year by remember { mutableStateOf(initial.year) }
     var modeMenuExpanded by remember { mutableStateOf(false) }
+    var showYearPicker by remember { mutableStateOf(false) }
     var showFromPicker by remember { mutableStateOf(false) }
     var showToPicker by remember { mutableStateOf(false) }
 
     fun publish() {
-        viewModel.setDateField(DateFieldState(enabled = enabled, mode = mode, from = from, to = to))
+        viewModel.setDateField(
+            DateFieldState(enabled = enabled, mode = mode, from = from, to = to, year = year),
+        )
     }
 
     Column(modifier = Modifier.padding(vertical = 8.dp)) {
@@ -270,12 +286,27 @@ private fun DateFieldRow(viewModel: QueryViewModel) {
                             label = { Text(to?.format(fmt) ?: "Before") },
                         )
                     }
-                    DateFieldState.DateMode.THIS_YEAR -> {}
+                    DateFieldState.DateMode.SINGLE_YEAR -> {
+                        Button(onClick = { showYearPicker = true }) {
+                            Text(year.toString())
+                        }
+                    }
                 }
             }
         }
     }
 
+    if (showYearPicker) {
+        YearPickerDialog(
+            selectedYear = year,
+            onDismiss = { showYearPicker = false },
+            onPicked = {
+                year = it
+                showYearPicker = false
+                publish()
+            },
+        )
+    }
     if (showFromPicker) {
         DatePickerDialogPicker(
             initial = from,
@@ -296,6 +327,103 @@ private fun DateFieldRow(viewModel: QueryViewModel) {
                 showToPicker = false
                 publish()
             },
+        )
+    }
+}
+
+@Composable
+private fun YearPickerDialog(
+    selectedYear: Int,
+    onDismiss: () -> Unit,
+    onPicked: (Int) -> Unit,
+) {
+    val currentYear = java.time.Year.now().value
+    val years = (0 until 100).map { currentYear - it }
+    val columns = 4
+    val gridState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+
+    LaunchedEffect(Unit) {
+        val row = years.indexOf(selectedYear) / columns
+        gridState.scrollToItem((row - 1).coerceAtLeast(0) * columns)
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    "Select year",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 12.dp),
+                )
+                // Height is deliberately not a multiple of the row height, so the last visible
+                // row is cropped — a standard Android affordance implying more content below.
+                Box(modifier = Modifier.height(286.dp)) {
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Fixed(columns),
+                        modifier = Modifier.fillMaxSize().padding(end = 10.dp),
+                    ) {
+                        items(years) { y ->
+                            val selected = y == selectedYear
+                            Surface(
+                                shape = RoundedCornerShape(50),
+                                color = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                modifier = Modifier
+                                    .padding(4.dp)
+                                    .clickable { onPicked(y) },
+                            ) {
+                                Text(
+                                    y.toString(),
+                                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.padding(vertical = 12.dp).fillMaxWidth(),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                )
+                            }
+                        }
+                    }
+                    YearGridScrollbar(
+                        gridState = gridState,
+                        totalItems = years.size,
+                        columns = columns,
+                        modifier = Modifier.align(androidx.compose.ui.Alignment.CenterEnd).fillMaxHeight(),
+                    )
+                }
+                Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
+                    Button(onClick = onDismiss) { Text("Cancel") }
+                }
+            }
+        }
+    }
+}
+
+/** Thin fast-scroll-style thumb signaling that the year grid has more content than fits on screen. */
+@Composable
+private fun YearGridScrollbar(
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+    totalItems: Int,
+    columns: Int,
+    modifier: Modifier = Modifier,
+) {
+    val totalRows = (totalItems + columns - 1) / columns
+    val thumbColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+    androidx.compose.foundation.Canvas(modifier = modifier.width(4.dp).padding(vertical = 4.dp)) {
+        val layoutInfo = gridState.layoutInfo
+        val visibleRows = ((layoutInfo.visibleItemsInfo.size + columns - 1) / columns).coerceAtLeast(1)
+        val firstRow = gridState.firstVisibleItemIndex / columns
+        val thumbHeightFraction = (visibleRows.toFloat() / totalRows).coerceIn(0.08f, 1f)
+        val maxOffsetFraction = (1f - thumbHeightFraction).coerceAtLeast(0f)
+        val thumbOffsetFraction = if (totalRows <= visibleRows) {
+            0f
+        } else {
+            (firstRow.toFloat() / (totalRows - visibleRows)).coerceIn(0f, 1f) * maxOffsetFraction
+        }
+        val thumbHeight = size.height * thumbHeightFraction
+        val thumbOffset = size.height * thumbOffsetFraction
+        drawRoundRect(
+            color = thumbColor,
+            topLeft = androidx.compose.ui.geometry.Offset(0f, thumbOffset),
+            size = androidx.compose.ui.geometry.Size(size.width, thumbHeight),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width / 2, size.width / 2),
         )
     }
 }

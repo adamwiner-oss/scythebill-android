@@ -34,11 +34,12 @@ data class LocationFieldState(
 
 data class DateFieldState(
     val enabled: Boolean = false,
-    val mode: DateMode = DateMode.BETWEEN,
+    val mode: DateMode = DateMode.SINGLE_YEAR,
     val from: LocalDate? = null,
     val to: LocalDate? = null,
+    val year: Int = Year.now().value,
 ) {
-    enum class DateMode { ON, BETWEEN, AFTER, BEFORE, THIS_YEAR }
+    enum class DateMode { SINGLE_YEAR, BETWEEN, AFTER, BEFORE, ON }
 
     fun clause(): Pair<String, List<Any>>? {
         if (!enabled) return null
@@ -50,11 +51,11 @@ data class DateFieldState(
             }
             DateMode.AFTER -> from?.let { "s.epochDay > ?" to listOf(it.toEpochDay()) }
             DateMode.BEFORE -> to?.let { "s.epochDay < ?" to listOf(it.toEpochDay()) }
-            DateMode.THIS_YEAR -> {
-                val year = Year.now()
+            DateMode.SINGLE_YEAR -> {
+                val y = Year.of(year)
                 "s.epochDay BETWEEN ? AND ?" to listOf(
-                    year.atDay(1).toEpochDay(),
-                    year.atMonthDay(java.time.MonthDay.of(12, 31)).toEpochDay(),
+                    y.atDay(1).toEpochDay(),
+                    y.atMonthDay(java.time.MonthDay.of(12, 31)).toEpochDay(),
                 )
             }
         }
