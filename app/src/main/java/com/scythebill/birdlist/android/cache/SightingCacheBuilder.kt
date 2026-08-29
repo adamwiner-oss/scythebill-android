@@ -1,5 +1,7 @@
 package com.scythebill.birdlist.android.cache
 
+import com.scythebill.birdlist.model.date.PartialDate
+import com.scythebill.birdlist.model.date.PartialField
 import com.scythebill.birdlist.model.query.SyntheticLocations
 import com.scythebill.birdlist.model.sighting.Location
 import com.scythebill.birdlist.model.sighting.ReportSet
@@ -10,8 +12,6 @@ import com.scythebill.birdlist.model.taxa.Taxon
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.joda.time.DateTimeFieldType
-import org.joda.time.ReadablePartial
 
 /**
  * Stage 2 of the two-stage load: flatten an in-memory [ReportSet] into the
@@ -195,7 +195,7 @@ class SightingCacheBuilder(private val dao: CacheDao) {
         return uris.joinToString(prefix = "[", postfix = "]") { "\"${it.replace("\"", "\\\"")}\"" }
     }
 
-    private fun epochDayOf(partial: ReadablePartial?): Long =
+    private fun epochDayOf(partial: PartialDate?): Long =
         partial?.let { datePartsOfPartial(it).first } ?: 0L
 
     private fun datePartsOf(sighting: Sighting): Pair<Long?, DatePrecision?> {
@@ -206,12 +206,12 @@ class SightingCacheBuilder(private val dao: CacheDao) {
         return datePartsOfPartial(partial).let { it.first to it.second }
     }
 
-    private fun datePartsOfPartial(partial: ReadablePartial): Pair<Long, DatePrecision> {
-        val hasDay = partial.isSupported(DateTimeFieldType.dayOfMonth())
-        val hasMonth = partial.isSupported(DateTimeFieldType.monthOfYear())
-        val year = partial.get(DateTimeFieldType.year())
-        val month = if (hasMonth) partial.get(DateTimeFieldType.monthOfYear()) else 1
-        val day = if (hasDay) partial.get(DateTimeFieldType.dayOfMonth()) else 1
+    private fun datePartsOfPartial(partial: PartialDate): Pair<Long, DatePrecision> {
+        val hasDay = partial.isSupported(PartialField.DAY)
+        val hasMonth = partial.isSupported(PartialField.MONTH)
+        val year = partial.get(PartialField.YEAR)
+        val month = if (hasMonth) partial.get(PartialField.MONTH) else 1
+        val day = if (hasDay) partial.get(PartialField.DAY) else 1
         val epochDay = java.time.LocalDate.of(year, month, day).toEpochDay()
         val precision = if (hasDay) DatePrecision.DAY else if (hasMonth) DatePrecision.MONTH else DatePrecision.YEAR
         return epochDay to precision

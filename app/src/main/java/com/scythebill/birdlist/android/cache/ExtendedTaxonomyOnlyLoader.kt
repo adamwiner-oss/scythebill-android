@@ -6,12 +6,12 @@ import com.scythebill.birdlist.model.taxa.Taxonomy
 import com.scythebill.birdlist.model.xml.ExtendedTaxonomyNodeParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.xml.sax.Attributes
 import org.xml.sax.InputSource
 import com.scythebill.xml.BaseNodeParser
 import com.scythebill.xml.NodeParser
 import com.scythebill.xml.ParseContext
 import com.scythebill.xml.TreeBuilder
+import com.scythebill.xml.XmlAttributes
 
 /**
  * Parses a single embedded extended `<taxonomy>` element out of a `.bsxm`
@@ -27,7 +27,7 @@ class ExtendedTaxonomyOnlyLoader(private val contentResolver: ContentResolver) {
 
     suspend fun load(uri: Uri, targetId: String): Taxonomy? = withContext(Dispatchers.IO) {
         BsxmContentSource.openReader(contentResolver, uri).use { reader ->
-            TreeBuilder<Taxonomy>(null, Taxonomy::class.java)
+            TreeBuilder<Taxonomy>(null, Taxonomy::class)
                 .parse(InputSource(reader), TargetTaxonomyParser(targetId))
         }
     }
@@ -39,7 +39,7 @@ class ExtendedTaxonomyOnlyLoader(private val contentResolver: ContentResolver) {
             context: ParseContext,
             namespaceURI: String?,
             localName: String,
-            attrs: Attributes,
+            attrs: XmlAttributes,
         ): NodeParser {
             if (localName == ExtendedTaxonomyNodeParser.ELEMENT_TAXONOMY &&
                 attrs.getValue("id") == targetId
