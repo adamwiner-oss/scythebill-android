@@ -1,21 +1,19 @@
 package com.scythebill.birdlist.android.ui.search
 
-import com.google.common.collect.ImmutableMultimap
 import com.scythebill.birdlist.android.cache.LocationEntity
 import com.scythebill.birdlist.android.cache.SyntheticLocationEntity
 import com.scythebill.birdlist.model.util.Indexer
 
-private val ALTERNATE_INDEX_ENTRIES: ImmutableMultimap<String, String> =
-    ImmutableMultimap.builder<String, String>()
-        .put("Mount", "Mt")
-        .put("Mountain", "Mt")
-        .put("Mt", "Mount")
-        .put("Fort", "Ft")
-        .put("Ft", "Fort")
-        .put("St", "Saint")
-        .put("Ste", "Sainte")
-        .put("Saint", "St")
-        .build()
+private val ALTERNATE_INDEX_ENTRIES: Map<String, List<String>> = mapOf(
+    "Mount" to listOf("Mt"),
+    "Mountain" to listOf("Mt"),
+    "Mt" to listOf("Mount"),
+    "Fort" to listOf("Ft"),
+    "Ft" to listOf("Fort"),
+    "St" to listOf("Saint"),
+    "Ste" to listOf("Sainte"),
+    "Saint" to listOf("St"),
+)
 
 /** Coarse kind of a location, used to order results within an index tier. */
 enum class LocationKind {

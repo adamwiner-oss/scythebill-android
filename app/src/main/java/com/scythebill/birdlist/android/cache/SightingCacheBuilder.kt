@@ -93,7 +93,7 @@ class SightingCacheBuilder(private val dao: CacheDao) {
         // sightings by taxon id and marks the earliest-dated one per group.
         val firstForTaxon = HashSet<Sighting>()
         prepared
-            .groupBy { it.sighting.taxon.ids.toSet() }
+            .groupBy { it.sighting.taxon.getIds().toSet() }
             .values
             .forEach { group ->
                 group.filter { it.epochDay != null }
@@ -103,14 +103,14 @@ class SightingCacheBuilder(private val dao: CacheDao) {
 
         val sightingEntities = prepared.map { p ->
             val info = p.sighting.sightingInfo
-            val resolved = p.sighting.taxon.resolve(p.sighting.taxonomy)
+            val resolved = p.sighting.taxon.resolve(p.sighting.taxonomy)!!
                 .resolveParentOfType(Taxon.Type.species)
-            val raisedType = resolved.type
+            val raisedType = resolved.getType()
             val (groupKey, displayName) = if (raisedType == SightingTaxon.Type.SINGLE) {
                 null to null
             } else {
-                resolved.taxa.mapNotNull { taxon: Taxon -> taxon.getId() }.sorted().joinToString(",") to
-                    resolved.preferredSingleName
+                resolved.getTaxa().mapNotNull { taxon: Taxon -> taxon.getId() }.sorted().joinToString(",") to
+                    resolved.getPreferredSingleName()
             }
             SightingEntity(
                 locationId = p.sighting.locationId,
@@ -148,7 +148,7 @@ class SightingCacheBuilder(private val dao: CacheDao) {
                     photoUrisJson = encodePhotos(info.photos.map { it.uri.toString() }),
                 )
             }
-            p.sighting.taxon.ids.forEach { taxonId -> taxonRows += SightingTaxonEntity(id, taxonId) }
+            p.sighting.taxon.getIds().forEach { taxonId -> taxonRows += SightingTaxonEntity(id, taxonId) }
             info?.users?.forEach { user -> userRows += SightingUserEntity(id, user.id()) }
         }
         dao.insertSightingDetails(detailEntities)

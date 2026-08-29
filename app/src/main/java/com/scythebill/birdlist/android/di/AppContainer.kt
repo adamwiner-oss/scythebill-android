@@ -13,7 +13,7 @@ import com.scythebill.birdlist.model.taxa.Taxonomy
 import com.scythebill.birdlist.model.taxa.TaxonomyImpl
 import com.scythebill.birdlist.model.taxa.TaxonomyMappingLoader
 import com.scythebill.birdlist.model.taxa.TaxonomyMappings
-import com.scythebill.birdlist.model.taxa.names.LocalNames
+import com.scythebill.birdlist.model.taxa.names.LocalNamesImpl
 import com.scythebill.birdlist.model.taxa.names.NamesLoaders
 import com.scythebill.birdlist.model.taxa.names.NamesPreferences
 import com.scythebill.birdlist.model.util.TaxonomyIndexer
@@ -69,7 +69,7 @@ class AppContainer {
         // taxon.xml precedent above) rather than Android assets, so the
         // same NamesLoaders.fromUrls classloader lookup desktop uses works
         // unchanged.
-        (taxonomy as TaxonomyImpl).localNames = LocalNames(
+        (taxonomy as TaxonomyImpl).localNames = LocalNamesImpl(
             NamesLoaders.fromUrls("multilingual/clements-names-%s.csv"),
             namesPreferences,
             NamesPreferences.LocaleOption.CLEMENTS,
