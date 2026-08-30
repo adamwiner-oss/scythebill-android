@@ -6,6 +6,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.google.common.base.Optional as GuavaOptional
 import com.google.common.truth.Truth.assertThat
 import com.scythebill.birdlist.android.di.AppContainer
+import com.scythebill.birdlist.model.taxa.names.NamesPreferences
 import com.scythebill.birdlist.model.xml.XmlReportSetImport
 import java.io.InputStreamReader
 import kotlin.system.measureTimeMillis
@@ -49,7 +50,7 @@ class LargeReportSetLoadInstrumentedTest {
     @Test
     fun coldStart_loadsLargeReportSetWithoutHanging() = runTest {
         val container = AppContainer()
-        val taxonomy = container.loadTaxonomy()
+        val taxonomy = container.loadTaxonomy(NamesPreferences())
         val taxonomyMappings = container.taxonomyMappings()
 
         var sightingCount = 0

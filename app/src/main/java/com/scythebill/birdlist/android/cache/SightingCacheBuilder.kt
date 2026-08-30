@@ -39,28 +39,29 @@ class SightingCacheBuilder(private val dao: CacheDao) {
         dao.insertLocations(
             allLocations.map { loc ->
                 LocationEntity(
-                    id = loc.id,
-                    name = loc.modelName,
-                    displayName = loc.displayName,
-                    type = loc.type?.name,
-                    parentId = loc.parent?.id,
-                    latitude = loc.latLong.orNull()?.latitudeAsDouble(),
-                    longitude = loc.latLong.orNull()?.longitudeAsDouble(),
+                    id = loc.getId()!!,
+                    name = loc.getModelName(),
+                    displayName = loc.getDisplayName(),
+                    type = loc.getType()?.name,
+                    parentId = loc.getParent()?.getId(),
+                    latitude = loc.getLatLong()?.latitudeAsDouble(),
+                    longitude = loc.getLatLong()?.longitudeAsDouble(),
                 )
             }
         )
         dao.insertLocationAncestors(buildAncestorClosure(allLocations))
 
         val syntheticLocations = SyntheticLocations(reportSet.locations)
-        val allLocationIds = allLocations.map { it.id }
+        val allLocationIds = allLocations.map { it.getId()!! }
         val syntheticEntities = mutableListOf<SyntheticLocationEntity>()
         val syntheticMemberEntities = mutableListOf<SyntheticLocationMemberEntity>()
         for (synthetic in syntheticLocations.locations()) {
-            syntheticEntities += SyntheticLocationEntity(synthetic.id, synthetic.displayName)
+            val syntheticId = synthetic.getId()!!
+            syntheticEntities += SyntheticLocationEntity(syntheticId, synthetic.getDisplayName())
             val predicate = synthetic.isInLocationPredicate()
             for (locationId in allLocationIds) {
                 if (predicate.apply(locationId)) {
-                    syntheticMemberEntities += SyntheticLocationMemberEntity(synthetic.id, locationId)
+                    syntheticMemberEntities += SyntheticLocationMemberEntity(syntheticId, locationId)
                 }
             }
         }
@@ -182,8 +183,8 @@ class SightingCacheBuilder(private val dao: CacheDao) {
             var cur: Location? = loc
             var depth = 0
             while (cur != null) {
-                result += LocationAncestorEntity(loc.id, cur.id, depth)
-                cur = cur.parent
+                result += LocationAncestorEntity(loc.getId()!!, cur.getId()!!, depth)
+                cur = cur.getParent()
                 depth++
             }
         }
