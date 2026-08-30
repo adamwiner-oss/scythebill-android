@@ -7,7 +7,7 @@ import com.scythebill.birdlist.model.sighting.Location
 import com.scythebill.birdlist.model.sighting.ReportSet
 import com.scythebill.birdlist.model.sighting.Sighting
 import com.scythebill.birdlist.model.sighting.SightingTaxon
-import com.scythebill.birdlist.model.sighting.Trips
+import com.scythebill.birdlist.model.sighting.TripUtils
 import com.scythebill.birdlist.model.taxa.Taxon
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -72,11 +72,11 @@ class SightingCacheBuilder(private val dao: CacheDao) {
             reportSet.trips.allTrips().map { trip ->
                 TripEntity(
                     id = trip.id(),
-                    name = trip.name(),
+                    name = trip.name().orEmpty(),
                     locationId = trip.locationId(),
                     startEpochDay = epochDayOf(trip.startDate()),
                     endEpochDay = epochDayOf(trip.endDate()),
-                    displayName = Trips.nameWithDate(trip, Locale.getDefault()),
+                    displayName = TripUtils.nameWithDate(trip, Locale.getDefault()),
                 )
             }
         )
