@@ -5,7 +5,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.google.common.base.Optional as GuavaOptional
 import com.google.common.truth.Truth.assertThat
 import com.scythebill.birdlist.android.di.AppContainer
-import com.scythebill.birdlist.model.sighting.ReportSets
+import com.scythebill.birdlist.model.sighting.ReportSetVersions
 import com.scythebill.birdlist.model.xml.XmlReportSetImport
 import com.scythebill.birdlist.model.xml.XmlTaxonImport
 import java.io.InputStreamReader
@@ -42,6 +42,6 @@ class XmlImportPipelineInstrumentedTest {
         }
 
         assertThat(reportSet.sightings).hasSize(7)
-        assertThat(reportSet.getLoadedVersion()).isEqualTo(ReportSets.VERSION_FORMAT_CURRENT)
+        assertThat(reportSet.getLoadedVersion()).isEqualTo(ReportSetVersions.VERSION_FORMAT_CURRENT)
     }
 }

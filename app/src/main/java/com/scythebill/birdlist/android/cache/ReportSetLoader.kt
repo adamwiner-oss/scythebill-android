@@ -4,7 +4,7 @@ import android.content.ContentResolver
 import android.net.Uri
 import com.google.common.base.Optional as GuavaOptional
 import com.scythebill.birdlist.model.sighting.ReportSet
-import com.scythebill.birdlist.model.sighting.ReportSets
+import com.scythebill.birdlist.model.sighting.ReportSetVersions
 import com.scythebill.birdlist.model.taxa.Taxonomy
 import com.scythebill.birdlist.model.taxa.TaxonomyMappings
 import com.scythebill.birdlist.model.xml.VersionTooNewException
@@ -38,7 +38,7 @@ class ReportSetLoader(
             }
 
             val loadedVersion = reportSet.getLoadedVersion()
-            if (loadedVersion != ReportSets.VERSION_FORMAT_CURRENT) {
+            if (loadedVersion != ReportSetVersions.VERSION_FORMAT_CURRENT) {
                 return@withContext ReportSetLoadResult.VersionMismatch(loadedVersion)
             }
             ReportSetLoadResult.Success(reportSet)
