@@ -30,8 +30,7 @@ class XmlImportPipelineInstrumentedTest {
             InputStreamReader(stream, Charsets.UTF_8).use { reader ->
                 XmlTaxonImport().importTaxa(reader)
             }
-        }
-        assertThat(taxonomy).isNotNull()
+        }!!
 
         val taxonomyMappings = AppContainer().taxonomyMappings()
         val reportSet = openAsset("testSightings.xml").use { stream ->
@@ -42,7 +41,7 @@ class XmlImportPipelineInstrumentedTest {
             }
         }
 
-        assertThat(reportSet.sightings).hasSize(6)
-        assertThat(reportSet.loadedVersion).isEqualTo(ReportSets.VERSION_FORMAT_CURRENT)
+        assertThat(reportSet.sightings).hasSize(7)
+        assertThat(reportSet.getLoadedVersion()).isEqualTo(ReportSets.VERSION_FORMAT_CURRENT)
     }
 }

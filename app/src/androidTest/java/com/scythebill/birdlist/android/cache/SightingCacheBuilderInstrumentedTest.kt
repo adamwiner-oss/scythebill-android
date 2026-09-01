@@ -68,7 +68,7 @@ class SightingCacheBuilderInstrumentedTest {
             sourceUri = "content://test/testSightings.xml",
             sourceSize = 1234L,
             sourceLastModified = 5678L,
-            taxonomyVersion = reportSet.loadedVersion,
+            taxonomyVersion = reportSet.getLoadedVersion(),
         )
 
         // locations: country "unst" plus its 3 direct children (wa, withtab,
@@ -139,6 +139,6 @@ class SightingCacheBuilderInstrumentedTest {
 
         val metadata = dao.getMetadata()
         assertThat(metadata).isNotNull()
-        assertThat(metadata!!.taxonomyVersion).isEqualTo(reportSet.loadedVersion)
+        assertThat(metadata!!.taxonomyVersion).isEqualTo(reportSet.getLoadedVersion())
     }
 }

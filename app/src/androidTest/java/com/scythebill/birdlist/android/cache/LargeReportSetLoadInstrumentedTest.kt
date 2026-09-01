@@ -70,7 +70,7 @@ class LargeReportSetLoadInstrumentedTest {
                     sourceUri = "content://test/large_sample.bsxm",
                     sourceSize = 1_895_287L,
                     sourceLastModified = 0L,
-                    taxonomyVersion = reportSet.loadedVersion,
+                    taxonomyVersion = reportSet.getLoadedVersion(),
                 )
             }
             // ANRs are triggered by >5s of main-thread blocking; this whole
