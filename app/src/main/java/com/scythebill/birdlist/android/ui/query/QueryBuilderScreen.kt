@@ -45,6 +45,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
@@ -210,7 +211,7 @@ private fun DateFieldRow(viewModel: QueryViewModel) {
     var mode by remember { mutableStateOf(initial.mode) }
     var from by remember { mutableStateOf(initial.from) }
     var to by remember { mutableStateOf(initial.to) }
-    var year by remember { mutableStateOf(initial.year) }
+    var year by remember { mutableIntStateOf(initial.year) }
     var modeMenuExpanded by remember { mutableStateOf(false) }
     var showYearPicker by remember { mutableStateOf(false) }
     var showFromPicker by remember { mutableStateOf(false) }
@@ -501,5 +502,5 @@ private fun PhotographedFieldRow(viewModel: QueryViewModel) {
 
 @Composable
 private fun Box2(content: @Composable () -> Unit) {
-    androidx.compose.foundation.layout.Box { content() }
+    Box { content() }
 }

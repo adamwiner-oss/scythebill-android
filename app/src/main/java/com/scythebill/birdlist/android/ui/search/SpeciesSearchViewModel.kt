@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.scythebill.birdlist.android.data.ActiveTaxonomyStore
 import com.scythebill.birdlist.model.taxa.Taxon
-import com.scythebill.birdlist.model.taxa.Taxonomy
 import com.scythebill.birdlist.model.taxa.names.NamesPreferences
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -17,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 data class SpeciesMatch(val taxon: Taxon, val label: String)
 
@@ -33,7 +33,7 @@ class SpeciesSearchViewModel(
 
     private val _rawMatches = MutableStateFlow<List<SpeciesMatch>>(emptyList())
 
-    private val _allowedPredicate = MutableStateFlow<(Taxon) -> Boolean>({ true })
+    private val _allowedPredicate = MutableStateFlow<(Taxon) -> Boolean> { true }
 
     val matches: StateFlow<List<SpeciesMatch>> =
         combine(_rawMatches, _allowedPredicate) { all, predicate ->
@@ -63,7 +63,7 @@ class SpeciesSearchViewModel(
             return
         }
         searchJob = viewModelScope.launch {
-            delay(DEBOUNCE_MILLIS)
+            delay(DEBOUNCE_MILLIS.milliseconds)
             val taxonomy = activeTaxonomyStore.activeTaxonomy.value ?: return@launch
             val ids = LinkedHashSet<String>()
             val alternateNameById = mutableMapOf<String, String>()

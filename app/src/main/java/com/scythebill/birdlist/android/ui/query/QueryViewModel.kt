@@ -10,7 +10,6 @@ import androidx.sqlite.db.SimpleSQLiteQuery
 import com.scythebill.birdlist.android.cache.CacheDao
 import com.scythebill.birdlist.android.cache.LoadState
 import com.scythebill.birdlist.android.cache.LocationEntity
-import com.scythebill.birdlist.android.cache.QueryResultRow
 import com.scythebill.birdlist.android.cache.SyntheticLocationEntity
 import com.scythebill.birdlist.android.cache.buildLocationDisplayNames
 import com.scythebill.birdlist.android.cache.decodePhotoUris
@@ -44,6 +43,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 sealed interface QueryResultsUiState {
     data object Loading : QueryResultsUiState
@@ -88,13 +88,13 @@ private data class QueryInputs(
 @OptIn(kotlinx.coroutines.FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class QueryViewModel(
     private val dao: CacheDao,
-    private val activeTaxonomyStore: ActiveTaxonomyStore,
-    private val queryPreferencesStore: QueryPreferencesStore? = null,
+    activeTaxonomyStore: ActiveTaxonomyStore,
+    queryPreferencesStore: QueryPreferencesStore? = null,
     private val loadState: Flow<LoadState> = flowOf(LoadState.Ready),
     namesState: Flow<NamesPreferencesState> = flowOf(
         NamesPreferencesState("en", NamesPreferences.ScientificOrCommon.COMMON_FIRST)
     ),
-    private val userFilterStore: UserFilterStore? = null,
+    userFilterStore: UserFilterStore? = null,
 ) : ViewModel() {
 
     private val queryPreferencesFlow: Flow<QueryPreferences> =
@@ -103,7 +103,7 @@ class QueryViewModel(
     // Common names are read straight off the shared Taxon/Taxonomy objects,
     // so a locale change doesn't need this flow's value to take effect —
     // but the naming-mode ("Common (Scientific)" vs "Scientific (Common)")
-    // does need it, and it also forces results to be recomputed whenever
+    // does need it. So force results to be recomputed whenever
     // the locale changes.
     private val namesStateFlow: Flow<NamesPreferencesState> = namesState
 
@@ -191,7 +191,7 @@ class QueryViewModel(
             // loads when the taxonomy version is unchanged, so without this
             // the query would keep showing results from the previous file.
             .combine(loadState.filter { it == LoadState.Ready }) { inputs, _ -> inputs }
-            .debounce(250)
+            .debounce(250.milliseconds)
             .mapLatest { inputs ->
                 runQuery(
                     inputs.location,

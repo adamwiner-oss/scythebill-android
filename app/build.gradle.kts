@@ -93,6 +93,10 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.2")
     implementation("androidx.documentfile:documentfile:1.0.1")
 
+    // QR scanning for "receive from desktop" — out-of-process Play Services UI,
+    // so the app never declares or requests the CAMERA permission.
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.google.truth:truth:1.4.5")
 

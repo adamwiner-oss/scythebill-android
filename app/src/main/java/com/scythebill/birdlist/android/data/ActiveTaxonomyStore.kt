@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /** Lightweight id/name pair for an embedded extended taxonomy, cheap to persist and read
- * back without re-parsing the source `.bsxm` file. */
+ * back without reparsing the source `.bsxm` file. */
 data class ExtendedTaxonomyDescriptor(val id: String, val name: String)
 
 /**
@@ -64,7 +64,7 @@ class ActiveTaxonomyStore(private val container: AppContainer) {
         baseTaxonomy?.let { _activeTaxonomy.value = it }
     }
 
-    /** An already-parsed extended taxonomy for [id], if any, avoiding a re-parse. */
+    /** An already-parsed extended taxonomy for [id], if any, avoiding a reparse. */
     fun getCachedExtendedTaxonomy(id: String): Taxonomy? = extendedTaxonomyCache[id]
 
     /** Indexes and caches a [Taxonomy] parsed on demand (see `ExtendedTaxonomyOnlyLoader`). */

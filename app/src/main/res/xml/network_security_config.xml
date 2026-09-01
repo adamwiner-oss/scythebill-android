@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Allows cleartext HTTP for the "receive from desktop" local-network
+     transfer. Android's network-security-config <domain> element only
+     matches literal hostnames (or wildcard subdomains) — it has no CIDR/
+     subnet syntax, so a LAN IP range can't be expressed here. The app has
+     no other network traffic, and TransferUrl.parse() already restricts
+     connections to private IPv4 hosts before any request is made, so
+     cleartext is permitted globally and enforced at the app layer instead. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

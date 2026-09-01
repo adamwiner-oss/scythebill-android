@@ -98,10 +98,10 @@ class FileLoadViewModel(
             // availability is known from cached metadata; the real Taxonomy objects
             // are parsed lazily only if the user opens "Select taxonomy".
             application.activeTaxonomyStore.setKnownExtendedTaxonomyDescriptors(
-                decodeExtendedTaxonomyDescriptors(existingMetadata?.extendedTaxonomyNamesJson)
+                decodeExtendedTaxonomyDescriptors(existingMetadata.extendedTaxonomyNamesJson)
             )
             application.userFilterStore.setAvailableUsers(
-                decodeUserDescriptors(existingMetadata?.userNamesJson)
+                decodeUserDescriptors(existingMetadata.userNamesJson)
             )
             _loadState.value = LoadState.Ready
             return
@@ -123,7 +123,7 @@ class FileLoadViewModel(
                     sourceUri = uri.toString(),
                     sourceSize = size,
                     sourceLastModified = lastModified,
-                    taxonomyVersion = result.reportSet.loadedVersion,
+                    taxonomyVersion = result.reportSet.getLoadedVersion(),
                 )
                 application.activeTaxonomyStore.setExtendedTaxonomies(
                     result.reportSet.extendedTaxonomies().toList()

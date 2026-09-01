@@ -12,7 +12,7 @@ import java.util.zip.ZipInputStream
 private val ZIP_MAGIC = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
 
 /**
- * Opens a [Reader] over the `.bsxm` XML content at [uri], transparently
+ * Opens a [Reader] over the `.bsxm` XML content at uri, transparently
  * unwrapping a `.zip` wrapper if present. A zip must contain exactly one
  * `.bsxm` entry; zero or more than one is treated as an error.
  */

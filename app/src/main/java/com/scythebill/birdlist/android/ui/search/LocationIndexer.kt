@@ -15,7 +15,7 @@ private val ALTERNATE_INDEX_ENTRIES: Map<String, List<String>> = mapOf(
     "Saint" to listOf("St"),
 )
 
-/** Coarse kind of a location, used to order results within an index tier. */
+/** Coarse kind of location, used to order results within an index tier. */
 enum class LocationKind {
     REGION,
     COUNTRY,
@@ -67,11 +67,6 @@ class LocationIndexer {
 /**
  * Builds a typeahead [LocationIndexer] over [locations], keyed by location
  * id - ported from desktop's `LocationIdToString.addToLocationIndex()`.
- * Indexes each location's display and model names in the simple tier, plus
- * the combo of each with its parent's names in a fallback tier, so a search
- * like "Springfield Illinois" narrows to the right one among same-named
- * locations without a plain query like "US" also matching unrelated places
- * whose parent's name happens to share initials.
  */
 fun buildLocationIndexer(locations: List<LocationEntity>): LocationIndexer {
     val index = LocationIndexer()

@@ -59,7 +59,7 @@ fun LocalNamesPreferencesScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
-            items(NamesPreferences.ScientificOrCommon.values().toList()) { mode ->
+            items(NamesPreferences.ScientificOrCommon.entries) { mode ->
                 ListItem(
                     headlineContent = { Text(mode.label()) },
                     leadingContent = {
@@ -79,7 +79,7 @@ fun LocalNamesPreferencesScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
-            items(NamesPreferences.AvailableClementsLocale.values().toList()) { locale ->
+            items(NamesPreferences.AvailableClementsLocale.entries) { locale ->
                 ListItem(
                     headlineContent = { Text(locale.toString()) },
                     leadingContent = {

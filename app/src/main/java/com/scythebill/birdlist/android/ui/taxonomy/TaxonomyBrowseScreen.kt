@@ -53,7 +53,6 @@ import com.scythebill.birdlist.android.ui.common.ExpandableSection
 import com.scythebill.birdlist.android.ui.common.StaticSection
 import com.scythebill.birdlist.android.ui.common.annotatedLabel
 import com.scythebill.birdlist.android.ui.common.namePartsFor
-import com.scythebill.birdlist.android.ui.query.QueryPreferences
 import com.scythebill.birdlist.model.taxa.Species
 import com.scythebill.birdlist.model.taxa.Taxon
 import com.scythebill.birdlist.model.taxa.TaxonUtils
@@ -114,7 +113,7 @@ fun TaxonomyBrowseScreen(
 
             // Scroll position for each browse level (keyed by taxon id), so that
             // navigating back to a family restores where the user left off. The
-            // LazyListState instances themselves aren't saveable across process
+            // LazyListState instances themselves aren't savable across process
             // recreation (e.g. rotation), so the raw index/offset pairs are mirrored
             // into rememberSaveable state and used to seed each LazyListState.
             val scrollPositionsSaver = remember {
@@ -124,7 +123,7 @@ fun TaxonomyBrowseScreen(
                 )
             }
             var scrollPositions by rememberSaveable(stateSaver = scrollPositionsSaver) {
-                mutableStateOf(emptyMap<String, Pair<Int, Int>>())
+                mutableStateOf(emptyMap())
             }
             val listStates = remember { mutableMapOf<String, LazyListState>() }
 

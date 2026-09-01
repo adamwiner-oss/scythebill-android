@@ -37,7 +37,7 @@ class ReportSetLoader(
                 )
             }
 
-            val loadedVersion = reportSet.loadedVersion
+            val loadedVersion = reportSet.getLoadedVersion()
             if (loadedVersion != ReportSets.VERSION_FORMAT_CURRENT) {
                 return@withContext ReportSetLoadResult.VersionMismatch(loadedVersion)
             }

@@ -8,10 +8,8 @@ import com.scythebill.birdlist.android.data.QueryPreferencesStore
 import com.scythebill.birdlist.android.data.UserPreferencesStore
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.MoreExecutors
-import com.scythebill.birdlist.model.taxa.IocUpgradeLoader
 import com.scythebill.birdlist.model.taxa.Taxonomy
 import com.scythebill.birdlist.model.taxa.TaxonomyImpl
-import com.scythebill.birdlist.model.taxa.TaxonomyMappingLoader
 import com.scythebill.birdlist.model.taxa.TaxonomyMappings
 import com.scythebill.birdlist.model.taxa.names.LocalNamesImpl
 import com.scythebill.birdlist.model.taxa.names.NamesLoaders

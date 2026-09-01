@@ -53,7 +53,7 @@ data class TripEntity(
     val locationId: String?,
     val startEpochDay: Long,
     val endEpochDay: Long,
-    /** Precomputed [com.scythebill.birdlist.model.sighting.Trips.nameWithDate]. */
+    /** Precomputed [com.scythebill.birdlist.model.sighting.TripUtils.nameWithDate]. */
     val displayName: String,
 )
 
@@ -125,7 +125,7 @@ data class CacheMetadataEntity(
     /**
      * Encoded [com.scythebill.birdlist.android.data.ExtendedTaxonomyDescriptor] list for any
      * taxonomies embedded in the source `.bsxm`, so a cache-hit relaunch can know they exist
-     * (and show the "Select taxonomy" menu) without re-parsing the whole file. See
+     * (and show the "Select taxonomy" menu) without reparsing the whole file. See
      * [encodeExtendedTaxonomyDescriptors]/[decodeExtendedTaxonomyDescriptors].
      */
     val extendedTaxonomyNamesJson: String? = null,
@@ -133,7 +133,7 @@ data class CacheMetadataEntity(
     /**
      * Encoded [com.scythebill.birdlist.android.data.UserDescriptor] list for the source `.bsxm`'s
      * `UserSet` (null if it has none), so a cache-hit relaunch can know whether the "User
-     * preferences" menu entry should be shown without re-parsing the file. See
+     * preferences" menu entry should be shown without reparsing the file. See
      * [encodeUserDescriptors]/[decodeUserDescriptors].
      */
     val userNamesJson: String? = null,

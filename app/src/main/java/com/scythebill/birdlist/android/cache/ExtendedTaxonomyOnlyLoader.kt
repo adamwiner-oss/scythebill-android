@@ -19,15 +19,15 @@ import com.scythebill.xml.XmlAttributes
  * prefs, and any *other* embedded extended taxonomies. Reuses the shared
  * `:xml-parser`/`:model` parsing infrastructure ([TreeBuilder],
  * [ExtendedTaxonomyNodeParser]) so the result matches what a full
- * [XmlReportSetImport] parse would produce for that taxonomy, without
- * building the rest of the [com.scythebill.birdlist.model.sighting.ReportSet]
+ * [com.scythebill.birdlist.model.xml.XmlReportSetImport] parse would produce for that taxonomy,
+ * without building the rest of the [com.scythebill.birdlist.model.sighting.ReportSet]
  * object graph.
  */
 class ExtendedTaxonomyOnlyLoader(private val contentResolver: ContentResolver) {
 
     suspend fun load(uri: Uri, targetId: String): Taxonomy? = withContext(Dispatchers.IO) {
         BsxmContentSource.openReader(contentResolver, uri).use { reader ->
-            TreeBuilder<Taxonomy>(null, Taxonomy::class)
+            TreeBuilder(null, Taxonomy::class)
                 .parse(InputSource(reader), TargetTaxonomyParser(targetId))
         }
     }
@@ -50,7 +50,7 @@ class ExtendedTaxonomyOnlyLoader(private val contentResolver: ContentResolver) {
             // Everything else (locations, trips, sightings, checklists, prefs,
             // other extended taxonomies, etc.) is skipped without building any
             // objects for it.
-            return BaseNodeParser.getIgnoreParser()
+            return getIgnoreParser()
         }
 
         override fun addCompletedChild(

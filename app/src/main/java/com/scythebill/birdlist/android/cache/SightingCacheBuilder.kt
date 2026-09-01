@@ -56,11 +56,11 @@ class SightingCacheBuilder(private val dao: CacheDao) {
         val syntheticEntities = mutableListOf<SyntheticLocationEntity>()
         val syntheticMemberEntities = mutableListOf<SyntheticLocationMemberEntity>()
         for (synthetic in syntheticLocations.locations()) {
-            val syntheticId = synthetic.getId()!!
+            val syntheticId = synthetic.getId()
             syntheticEntities += SyntheticLocationEntity(syntheticId, synthetic.getDisplayName())
             val predicate = synthetic.isInLocationPredicate()
             for (locationId in allLocationIds) {
-                if (predicate.apply(locationId)) {
+                if (predicate(locationId)) {
                     syntheticMemberEntities += SyntheticLocationMemberEntity(syntheticId, locationId)
                 }
             }
@@ -94,7 +94,7 @@ class SightingCacheBuilder(private val dao: CacheDao) {
         // sightings by taxon id and marks the earliest-dated one per group.
         val firstForTaxon = HashSet<Sighting>()
         prepared
-            .groupBy { it.sighting.taxon.getIds().toSet() }
+            .groupBy { it.sighting.getTaxon().getIds().toSet() }
             .values
             .forEach { group ->
                 group.filter { it.epochDay != null }
@@ -103,8 +103,8 @@ class SightingCacheBuilder(private val dao: CacheDao) {
             }
 
         val sightingEntities = prepared.map { p ->
-            val info = p.sighting.sightingInfo
-            val resolved = p.sighting.taxon.resolve(p.sighting.taxonomy)!!
+            val info = if (p.sighting.hasSightingInfo()) p.sighting.getSightingInfo() else null
+            val resolved = p.sighting.getTaxon().resolve(p.sighting.getTaxonomy())!!
                 .resolveParentOfType(Taxon.Type.species)
             val raisedType = resolved.getType()
             val (groupKey, displayName) = if (raisedType == SightingTaxon.Type.SINGLE) {
@@ -114,21 +114,21 @@ class SightingCacheBuilder(private val dao: CacheDao) {
                     resolved.getPreferredSingleName()
             }
             SightingEntity(
-                locationId = p.sighting.locationId,
+                locationId = p.sighting.getLocationId(),
                 epochDay = p.epochDay,
                 datePrecision = p.precision,
-                tripId = p.sighting.trip?.id(),
-                sightingStatus = info?.sightingStatus?.name,
-                breedingCode = info?.breedingBirdCode?.name,
-                male = info?.isMale ?: false,
-                female = info?.isFemale ?: false,
-                immature = info?.isImmature ?: false,
-                adult = info?.isAdult ?: false,
-                photographed = info?.isPhotographed ?: false,
-                heardOnly = info?.isHeardOnly ?: false,
-                approximateNumber = info?.number?.toString(),
+                tripId = p.sighting.getTrip()?.id(),
+                sightingStatus = info?.getSightingStatus()?.name,
+                breedingCode = info?.getBreedingBirdCode()?.name,
+                male = info?.isMale() ?: false,
+                female = info?.isFemale() ?: false,
+                immature = info?.isImmature() ?: false,
+                adult = info?.isAdult() ?: false,
+                photographed = info?.isPhotographed() ?: false,
+                heardOnly = info?.isHeardOnly() ?: false,
+                approximateNumber = info?.getNumber()?.toString(),
                 firstForTaxon = p.sighting in firstForTaxon,
-                taxonomyId = p.sighting.taxonomy.getId(),
+                taxonomyId = p.sighting.getTaxonomy().getId(),
                 raisedTaxonType = raisedType.name,
                 raisedGroupKey = groupKey,
                 raisedDisplayName = displayName,
@@ -141,16 +141,16 @@ class SightingCacheBuilder(private val dao: CacheDao) {
         val userRows = mutableListOf<SightingUserEntity>()
         prepared.forEachIndexed { idx, p ->
             val id = ids[idx]
-            val info = p.sighting.sightingInfo
-            if (info != null && (!info.description.isNullOrEmpty() || info.photos.isNotEmpty())) {
+            val info = if (p.sighting.hasSightingInfo()) p.sighting.getSightingInfo() else null
+            if (info != null && (!info.getDescription().isNullOrEmpty() || info.getPhotos().isNotEmpty())) {
                 detailEntities += SightingDetailsEntity(
                     sightingId = id,
-                    description = info.description,
-                    photoUrisJson = encodePhotos(info.photos.map { it.uri.toString() }),
+                    description = info.getDescription(),
+                    photoUrisJson = encodePhotos(info.getPhotos().map { it.uri.toString() }),
                 )
             }
-            p.sighting.taxon.getIds().forEach { taxonId -> taxonRows += SightingTaxonEntity(id, taxonId) }
-            info?.users?.forEach { user -> userRows += SightingUserEntity(id, user.id()) }
+            p.sighting.getTaxon().getIds().forEach { taxonId -> taxonRows += SightingTaxonEntity(id, taxonId) }
+            info?.getUsers()?.forEach { user -> userRows += SightingUserEntity(id, user.id()) }
         }
         dao.insertSightingDetails(detailEntities)
         dao.insertSightingTaxa(taxonRows)
@@ -200,9 +200,9 @@ class SightingCacheBuilder(private val dao: CacheDao) {
         partial?.let { datePartsOfPartial(it).first } ?: 0L
 
     private fun datePartsOf(sighting: Sighting): Pair<Long?, DatePrecision?> {
-        val partial = sighting.storedDateAsPartial
-            ?: sighting.singleDateAsPartial
-            ?: sighting.trip?.startDate()
+        val partial = sighting.getStoredDateAsPartial()
+            ?: sighting.getSingleDateAsPartial()
+            ?: sighting.getTrip()?.startDate()
             ?: return null to null
         return datePartsOfPartial(partial).let { it.first to it.second }
     }

@@ -6,15 +6,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 
 /** Lightweight id/display-name pair for a user, cheap to persist and read back without
- * re-parsing the source `.bsxm` file. */
+ * reparsing the source `.bsxm` file. */
 data class UserDescriptor(val id: String, val name: String)
 
 /**
  * Tracks the users available from the currently loaded `.bsxm`'s `UserSet` (empty if it has
  * none), and which one, if any, all queries should currently be limited to. Selecting a user is
  * sticky across app relaunches and file reloads via [UserPreferencesStore], but this store is
- * responsible for reconciling that persisted choice against the users actually available in the
- * currently loaded file, reverting to "All users" if the persisted id is no longer present.
+ * responsible for reconciling that choice against the users actually available in the
+ * currently loaded file.
  */
 class UserFilterStore(private val preferencesStore: UserPreferencesStore) {
     private val _availableUsers = MutableStateFlow<List<UserDescriptor>>(emptyList())

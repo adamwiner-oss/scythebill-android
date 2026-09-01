@@ -21,8 +21,8 @@ fun Taxon.localizedCommonName(): String? {
 }
 
 /**
- * The primary/secondary name to show for [this] taxon (a species, family,
- * order, etc.) given [mode]. Whichever part is the scientific name is
+ * The primary/secondary name to show for this taxon (a species, family,
+ * order, etc.) given mode. Whichever part is the scientific name is
  * flagged so callers can italicize just that part; falls back to the
  * scientific name alone when there's no common name to pair it with.
  */

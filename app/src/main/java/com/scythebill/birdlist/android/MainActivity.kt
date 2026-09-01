@@ -3,6 +3,7 @@ package com.scythebill.birdlist.android
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
@@ -47,9 +47,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.scythebill.birdlist.android.cache.FileLoadViewModel
 import com.scythebill.birdlist.android.data.ExtendedTaxonomyDescriptor
 import com.scythebill.birdlist.android.cache.LoadState
+import com.scythebill.birdlist.android.transfer.DesktopTransferDownloader
+import com.scythebill.birdlist.android.transfer.TransferQrPayload
+import com.scythebill.birdlist.android.transfer.TransferUrl
 import com.scythebill.birdlist.android.ui.names.LocalNamesPreferencesScreen
 import com.scythebill.birdlist.android.ui.query.QueryPreferencesDialog
 import com.scythebill.birdlist.android.ui.query.QueryScreen
@@ -109,7 +115,7 @@ class MainActivity : ComponentActivity() {
                     // off application-scoped work (taxonomyDeferred, and the
                     // cache-metadata short-circuit in FileLoadViewModel), so
                     // re-running this on rotation is cheap and never
-                    // re-parses anything already loaded.
+                    // reparses anything already loaded.
                     var startupReady by remember { mutableStateOf(false) }
                     LaunchedEffect(Unit) {
                         (application as ScythebillApplication).taxonomyDeferred.await()
@@ -189,10 +195,12 @@ class MainActivity : ComponentActivity() {
                                 LoadFileBar(
                                     fileLoadViewModel = fileLoadViewModel,
                                     onPickFile = { openDocumentLauncher.launch(arrayOf("*/*")) },
+                                    onReceiveFromDesktop = { startReceiveFromDesktopScan() },
                                 )
                             } else {
                                 AppTopBar(
                                     onPickFile = { openDocumentLauncher.launch(arrayOf("*/*")) },
+                                    onReceiveFromDesktop = { startReceiveFromDesktopScan() },
                                     onEditReportPreferences = { reportPreferencesExpanded = true },
                                     onEditLocalNames = { localNamesPreferencesExpanded = true },
                                     hasUsers = availableUsers.isNotEmpty(),
@@ -273,6 +281,52 @@ class MainActivity : ComponentActivity() {
         handleViewIntent(intent)
     }
 
+    /**
+     * Starts a Play Services Code Scanner scan — its UI runs out-of-process
+     * in Play Services, so this never declares or requests CAMERA.
+     */
+    private fun startReceiveFromDesktopScan() {
+        // A report set already showing the hamburger-menu AppTopBar (LoadState.Ready)
+        // must stay showing it if the scan is canceled or fails — reportError()
+        // would otherwise flip loadState away from Ready and fall back to the
+        // two-button LoadFileBar, discarding the still-loaded file. In that case
+        // surface the failure as a transient Toast instead of a state change.
+        val hadLoadedFile = fileLoadViewModel.loadState.value is LoadState.Ready
+        fun reportScanError(message: String) {
+            if (hadLoadedFile) {
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+            } else {
+                fileLoadViewModel.reportError(message)
+            }
+        }
+
+        val options = GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+            .build()
+        GmsBarcodeScanning.getClient(this, options).startScan()
+            .addOnSuccessListener { barcode ->
+                val url = barcode.rawValue
+                    ?.let { TransferQrPayload.parseIpUrl(it) }
+                    ?.let { TransferUrl.parse(it) }
+                if (url == null) {
+                    reportScanError("That QR code isn't a Scythebill transfer link")
+                    return@addOnSuccessListener
+                }
+                lifecycleScope.launch {
+                    val destFile = File(filesDir, "received.bsxm")
+                    try {
+                        DesktopTransferDownloader.download(url, destFile)
+                        fileLoadViewModel.onFileSelected(Uri.fromFile(destFile))
+                    } catch (e: Exception) {
+                        reportScanError(e.message ?: "Could not download file from desktop")
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                reportScanError(e.message ?: "QR scan failed")
+            }
+    }
+
     private fun handleViewIntent(intent: Intent?) {
         if (intent?.action == Intent.ACTION_VIEW) {
             intent.data?.let { handleIncomingUri(it) }
@@ -284,7 +338,7 @@ class MainActivity : ComponentActivity() {
             try {
                 contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 uri
-            } catch (e: SecurityException) {
+            } catch (_: SecurityException) {
                 copyToAppPrivateStorage(uri)
             }
         } catch (e: Exception) {
@@ -295,7 +349,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * Some senders/apps hand ACTION_VIEW an Uri that can't be persisted
+     * Some senders/apps hand ACTION_VIEW a Uri that can't be persisted
      * (one-shot content Uris). Copy the bytes into app-private storage so
      * the cache-invalidation check always has a stable file to compare
      * against, even without a persistable permission.
@@ -351,11 +405,20 @@ private fun LoadingOverlay(message: String) {
 private fun LoadFileBar(
     fileLoadViewModel: FileLoadViewModel,
     onPickFile: () -> Unit,
+    onReceiveFromDesktop: () -> Unit,
 ) {
     val state by fileLoadViewModel.loadState.collectAsState()
     Column(modifier = Modifier.padding(16.dp)) {
-        Button(onClick = onPickFile) {
-            Text("Pick .bsxm file")
+        Row {
+            Button(onClick = onPickFile) {
+                Text("Pick .bsxm file")
+            }
+            Button(
+                onClick = onReceiveFromDesktop,
+                modifier = Modifier.padding(start = 8.dp),
+            ) {
+                Text("Receive from desktop")
+            }
         }
         Text(
             when (state) {
@@ -373,6 +436,7 @@ private fun LoadFileBar(
 @Composable
 private fun AppTopBar(
     onPickFile: () -> Unit,
+    onReceiveFromDesktop: () -> Unit,
     onEditReportPreferences: () -> Unit,
     onEditLocalNames: () -> Unit,
     hasUsers: Boolean,
@@ -430,6 +494,13 @@ private fun AppTopBar(
                         onPickFile()
                     },
                 )
+                DropdownMenuItem(
+                    text = { Text("Receive from desktop") },
+                    onClick = {
+                        menuExpanded = false
+                        onReceiveFromDesktop()
+                    },
+                )
             }
             IconButton(onClick = {
                 if (searchExpanded) speciesSearchViewModel.clear()
@@ -474,7 +545,7 @@ private fun TaxonomySelectionDialog(
                             selected = taxonomy === activeTaxonomy,
                             onClick = { onSelectBase(taxonomy) },
                         )
-                        Text(taxonomy.getName() ?: "eBird/Clements")
+                        Text(taxonomy.getName())
                     }
                 }
                 extendedTaxonomyDescriptors.forEach { descriptor ->
