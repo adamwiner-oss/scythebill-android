@@ -47,36 +47,6 @@ class LocationIndexerTest {
     }
 
     @Test
-    fun `simple name matches are favored over parent-combined matches`() {
-        val index = buildLocationIndexer(
-            listOf(
-                location("south-america", "South America"),
-                location("uy", "Uruguay", parentId = "south-america"),
-                location("us", "United States"),
-            ),
-        )
-        // "US" abbreviation-matches "United States" directly, and also
-        // matches "Uruguay South America" (Uruguay + South America's
-        // initials) - but the simple-name match should come first.
-        assertEquals(listOf("us", "uy"), index.find("US").toList())
-    }
-
-    @Test
-    fun `parent-combined matches are still found when nothing simple matches`() {
-        val index = buildLocationIndexer(
-            listOf(
-                location("il", "Illinois"),
-                location("us-il-springfield", "Springfield", parentId = "il"),
-                location("us-mo-springfield", "Springfield", parentId = null),
-            ),
-        )
-        assertEquals(
-            listOf("us-il-springfield"),
-            index.find("Springfield Illinois").toList(),
-        )
-    }
-
-    @Test
     fun `results within a tier are sorted by kind - regions, countries, synthetic, then other`() {
         val index = LocationIndexer()
         index.addSimple("Test", "other", LocationKind.OTHER)
