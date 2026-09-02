@@ -15,6 +15,7 @@ kotlin {
             dependencies {
                 api(project(":xml-parser"))
                 api("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.4.0")
+                api("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
             }
         }
         jvmMain {
