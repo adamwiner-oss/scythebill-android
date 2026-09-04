@@ -91,6 +91,10 @@ dependencies {
     // QR scanning for "receive from desktop" — out-of-process Play Services UI,
     // so the app never declares or requests the CAMERA permission.
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+    // play-services-code-scanner transitively pulls in fragment 1.0.0, which
+    // fails lint's InvalidFragmentVersionForActivityResult check; force a
+    // modern version since MainActivity uses registerForActivityResult.
+    implementation("androidx.fragment:fragment:1.8.5")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("com.google.truth:truth:1.4.5")
