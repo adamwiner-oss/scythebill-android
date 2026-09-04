@@ -70,6 +70,10 @@ import com.scythebill.birdlist.model.taxa.Taxonomy
 import java.io.File
 import kotlinx.coroutines.launch
 
+// Temporarily disabled pending further testing; leave the underlying
+// transfer code in place.
+private const val RECEIVE_FROM_DESKTOP_ENABLED = false
+
 class MainActivity : ComponentActivity() {
     private val taxonomyViewModel: TaxonomyBrowseViewModel by viewModels {
         TaxonomyBrowseViewModel.Factory(
@@ -413,11 +417,13 @@ private fun LoadFileBar(
             Button(onClick = onPickFile) {
                 Text("Pick .bsxm file")
             }
-            Button(
-                onClick = onReceiveFromDesktop,
-                modifier = Modifier.padding(start = 8.dp),
-            ) {
-                Text("Receive from desktop")
+            if (RECEIVE_FROM_DESKTOP_ENABLED) {
+                Button(
+                    onClick = onReceiveFromDesktop,
+                    modifier = Modifier.padding(start = 8.dp),
+                ) {
+                    Text("Receive from desktop")
+                }
             }
         }
         Text(
@@ -494,13 +500,15 @@ private fun AppTopBar(
                         onPickFile()
                     },
                 )
-                DropdownMenuItem(
-                    text = { Text("Receive from desktop") },
-                    onClick = {
-                        menuExpanded = false
-                        onReceiveFromDesktop()
-                    },
-                )
+                if (RECEIVE_FROM_DESKTOP_ENABLED) {
+                    DropdownMenuItem(
+                        text = { Text("Receive from desktop") },
+                        onClick = {
+                            menuExpanded = false
+                            onReceiveFromDesktop()
+                        },
+                    )
+                }
             }
             IconButton(onClick = {
                 if (searchExpanded) speciesSearchViewModel.clear()
