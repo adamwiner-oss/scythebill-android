@@ -50,7 +50,15 @@ class FileLoadViewModel(
      */
     suspend fun checkForPickedFileOnLaunch() {
         val storedUri = pickedFilePreferences.pickedUriFlow.firstOrNull() ?: return
-        loadFrom(Uri.parse(storedUri))
+        val uri = Uri.parse(storedUri)
+        if (resolveDocFile(uri)?.exists() != true) {
+            // The stored file/permission is gone, e.g. filesDir was wiped by an
+            // uninstall and never restored by Auto Backup. Rather than surface a
+            // parse error, drop back to "no file loaded" so the user just re-imports.
+            pickedFilePreferences.clear()
+            return
+        }
+        loadFrom(uri)
     }
 
     fun onFileSelected(uri: Uri) {
@@ -64,19 +72,18 @@ class FileLoadViewModel(
         _loadState.value = LoadState.ParseError(message)
     }
 
-    private suspend fun loadFrom(uri: Uri) {
-        _loadState.value = LoadState.Loading
-
-        val docFile = if (uri.scheme == "file") {
-            val path = uri.path
-            if (path == null) {
-                _loadState.value = LoadState.ParseError("Could not resolve $uri")
-                return
-            }
-            DocumentFile.fromFile(File(path))
+    private fun resolveDocFile(uri: Uri): DocumentFile? {
+        return if (uri.scheme == "file") {
+            uri.path?.let { DocumentFile.fromFile(File(it)) }
         } else {
             DocumentFile.fromSingleUri(application, uri)
         }
+    }
+
+    private suspend fun loadFrom(uri: Uri) {
+        _loadState.value = LoadState.Loading
+
+        val docFile = resolveDocFile(uri)
         if (docFile == null) {
             _loadState.value = LoadState.ParseError("Could not resolve $uri")
             return

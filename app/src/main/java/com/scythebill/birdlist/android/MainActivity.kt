@@ -338,25 +338,21 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIncomingUri(uri: Uri) {
-        val persistableUri: Uri = try {
-            try {
-                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                uri
-            } catch (_: SecurityException) {
-                copyToAppPrivateStorage(uri)
-            }
+        val localUri: Uri = try {
+            copyToAppPrivateStorage(uri)
         } catch (e: Exception) {
             fileLoadViewModel.reportError(e.message ?: "Could not open $uri")
             return
         }
-        fileLoadViewModel.onFileSelected(persistableUri)
+        fileLoadViewModel.onFileSelected(localUri)
     }
 
     /**
-     * Some senders/apps hand ACTION_VIEW a Uri that can't be persisted
-     * (one-shot content Uris). Copy the bytes into app-private storage so
-     * the cache-invalidation check always has a stable file to compare
-     * against, even without a persistable permission.
+     * ACTION_VIEW Uris (e.g. from Drive) may only grant a one-shot read, and
+     * even a persistable grant is revoked on uninstall while the picked-file
+     * preference can survive via Auto Backup. Always copy the bytes into
+     * app-private storage so the file can always be reloaded on launch,
+     * with no dependency on an external permission grant.
      */
     private fun copyToAppPrivateStorage(sourceUri: Uri): Uri {
         val destFile = File(filesDir, "imported.bsxm")
