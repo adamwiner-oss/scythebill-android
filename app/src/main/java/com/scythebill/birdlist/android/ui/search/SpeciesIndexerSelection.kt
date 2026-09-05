@@ -18,7 +18,7 @@ fun speciesIndexerGroups(
     namesPreferences: NamesPreferences,
 ): List<Indexer<String>> {
     val scientific = listOfNotNull(taxonomy.scientificIndexer)
-    val common = listOfNotNull(taxonomy.localizedCommonIndexer, taxonomy.commonIndexer)
+    val common = listOfNotNull(taxonomy.localizedCommonIndexer ?:  taxonomy.commonIndexer)
     return when (namesPreferences.scientificOrCommon) {
         NamesPreferences.ScientificOrCommon.COMMON_FIRST -> common + scientific
         NamesPreferences.ScientificOrCommon.SCIENTIFIC_FIRST -> scientific + common
